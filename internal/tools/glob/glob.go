@@ -11,7 +11,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 
-	"github.com/baidu/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
 const maxResults = 1000

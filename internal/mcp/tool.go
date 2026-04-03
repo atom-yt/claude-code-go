@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/baidu/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
 // mcpTool wraps an MCP server tool as a tools.Tool.

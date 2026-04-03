@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
-	"github.com/baidu/claude-code-go/internal/api"
-	"github.com/baidu/claude-code-go/internal/hooks"
-	"github.com/baidu/claude-code-go/internal/permissions"
-	"github.com/baidu/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/api"
+	"github.com/atom-yt/claude-code-go/internal/hooks"
+	"github.com/atom-yt/claude-code-go/internal/permissions"
+	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
 // Agent manages conversation history and runs the multi-turn tool loop.
@@ -139,8 +140,16 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 			return
 		}
 
-		// Execute tools (with permission check) and collect results.
+		// Phase 1 (sequential): pre-hooks + permission checks.
+		// Produces an ordered list of approved tool calls ready for execution.
+		type approved struct {
+			tu             api.ToolUse
+			concurrentSafe bool
+		}
+		var approvedTools []approved
 		var toolResults []api.ToolResult
+
+		aborted := false
 		for _, tu := range toolUses {
 			// Pre-tool hooks.
 			if a.executor != nil {
@@ -157,12 +166,13 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 				}
 			}
 
-			// Permission check.
+			// Permission check (may block waiting for user input via AskFn).
 			if a.checker != nil {
 				decision, err := a.checker.Check(ctx, tu.Name, tu.Input)
 				if err != nil {
 					ch <- StreamEvent{Type: EventError, Error: fmt.Errorf("permission check error: %w", err)}
-					return
+					aborted = true
+					break
 				}
 				if !decision.Allowed {
 					denyMsg := fmt.Sprintf("Permission denied: %s", decision.Reason)
@@ -176,25 +186,61 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 				}
 			}
 
-			ch <- StreamEvent{
-				Type:      EventToolCall,
-				ToolName:  tu.Name,
-				ToolInput: tu.Input,
+			ch <- StreamEvent{Type: EventToolCall, ToolName: tu.Name, ToolInput: tu.Input}
+
+			safe := false
+			if a.registry != nil {
+				if t, ok := a.registry.GetByName(tu.Name); ok {
+					safe = t.IsConcurrencySafe()
+				}
 			}
+			approvedTools = append(approvedTools, approved{tu: tu, concurrentSafe: safe})
+		}
+		if aborted {
+			return
+		}
 
-			result := a.executeTool(ctx, tu)
+		// Phase 2: execute approved tools.
+		// Concurrent-safe tools run in parallel; others run sequentially.
+		// Results are collected in original order.
+		results := make([]api.ToolResult, len(approvedTools))
+		allSafe := true
+		for _, a := range approvedTools {
+			if !a.concurrentSafe {
+				allSafe = false
+				break
+			}
+		}
+
+		if allSafe && len(approvedTools) > 1 {
+			var wg sync.WaitGroup
+			for i, ap := range approvedTools {
+				i, ap := i, ap
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					results[i] = a.executeTool(ctx, ap.tu)
+				}()
+			}
+			wg.Wait()
+		} else {
+			for i, ap := range approvedTools {
+				results[i] = a.executeTool(ctx, ap.tu)
+			}
+		}
+
+		for i, ap := range approvedTools {
+			result := results[i]
 			toolResults = append(toolResults, result)
-
 			ch <- StreamEvent{
 				Type:        EventToolResult,
-				ToolName:    tu.Name,
+				ToolName:    ap.tu.Name,
 				ToolOutput:  result.Output,
 				ToolIsError: result.IsError,
 			}
-
 			// Post-tool hooks (async, non-blocking).
 			if a.executor != nil {
-				go a.executor.FirePostToolCall(ctx, tu.Name, tu.Input)
+				go a.executor.FirePostToolCall(ctx, ap.tu.Name, ap.tu.Input)
 			}
 		}
 

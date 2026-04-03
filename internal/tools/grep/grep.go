@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/baidu/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
 const maxMatchLines = 500

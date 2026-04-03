@@ -9,21 +9,21 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/baidu/claude-code-go/internal/agent"
-	"github.com/baidu/claude-code-go/internal/api"
-	"github.com/baidu/claude-code-go/internal/commands"
-	"github.com/baidu/claude-code-go/internal/config"
-	"github.com/baidu/claude-code-go/internal/hooks"
-	"github.com/baidu/claude-code-go/internal/mcp"
-	"github.com/baidu/claude-code-go/internal/permissions"
-	"github.com/baidu/claude-code-go/internal/session"
-	"github.com/baidu/claude-code-go/internal/tools"
-	toolbash "github.com/baidu/claude-code-go/internal/tools/bash"
-	tooledit "github.com/baidu/claude-code-go/internal/tools/edit"
-	toolglob "github.com/baidu/claude-code-go/internal/tools/glob"
-	toolgrep "github.com/baidu/claude-code-go/internal/tools/grep"
-	toolread "github.com/baidu/claude-code-go/internal/tools/read"
-	toolwrite "github.com/baidu/claude-code-go/internal/tools/write"
+	"github.com/atom-yt/claude-code-go/internal/agent"
+	"github.com/atom-yt/claude-code-go/internal/api"
+	"github.com/atom-yt/claude-code-go/internal/commands"
+	"github.com/atom-yt/claude-code-go/internal/config"
+	"github.com/atom-yt/claude-code-go/internal/hooks"
+	"github.com/atom-yt/claude-code-go/internal/mcp"
+	"github.com/atom-yt/claude-code-go/internal/permissions"
+	"github.com/atom-yt/claude-code-go/internal/session"
+	"github.com/atom-yt/claude-code-go/internal/tools"
+	toolbash "github.com/atom-yt/claude-code-go/internal/tools/bash"
+	tooledit "github.com/atom-yt/claude-code-go/internal/tools/edit"
+	toolglob "github.com/atom-yt/claude-code-go/internal/tools/glob"
+	toolgrep "github.com/atom-yt/claude-code-go/internal/tools/grep"
+	toolread "github.com/atom-yt/claude-code-go/internal/tools/read"
+	toolwrite "github.com/atom-yt/claude-code-go/internal/tools/write"
 )
 
 // Role identifies the sender of a chat message.
@@ -76,6 +76,9 @@ type Model struct {
 	width    int
 	height   int
 	styles   styles
+
+	// Cached glamour renderer (invalidated when width changes).
+	mdRenderer    *glamourRenderer
 
 	// Scrolling.
 	scrollOffset int
@@ -135,6 +138,7 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		historyIdx:  -1,
 		cmdRegistry: commands.NewRegistry(),
 		sessionID:   session.NewID(),
+		mdRenderer:  &glamourRenderer{},
 	}
 
 	if settings.APIKey != "" {

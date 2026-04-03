@@ -7,9 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/baidu/claude-code-go/internal/agent"
-	"github.com/baidu/claude-code-go/internal/commands"
-	"github.com/baidu/claude-code-go/internal/session"
+	"github.com/atom-yt/claude-code-go/internal/agent"
+	"github.com/atom-yt/claude-code-go/internal/commands"
+	"github.com/atom-yt/claude-code-go/internal/session"
 )
 
 // Init implements tea.Model.

@@ -1,4 +1,4 @@
-module github.com/baidu/claude-code-go
+module github.com/atom-yt/claude-code-go
 
 go 1.22.10
 

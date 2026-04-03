@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/baidu/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
 // Tool performs exact string replacements in files.

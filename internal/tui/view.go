@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -144,7 +143,7 @@ func (m Model) renderMessage(idx int) []string {
 // renderMarkdown renders assistant content through glamour for Markdown formatting.
 // Falls back to plain word-wrapped text on error.
 func (m Model) renderMarkdown(msg *ChatMessage, width int) string {
-	// Use cached render if content hasn't changed and not streaming.
+	// Use per-message render cache when not streaming.
 	if !msg.Streaming && msg.rendered != "" {
 		return msg.rendered
 	}
@@ -153,11 +152,8 @@ func (m Model) renderMarkdown(msg *ChatMessage, width int) string {
 		width = 20
 	}
 
-	r, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(width),
-	)
-	if err != nil {
+	r := m.mdRenderer.get(width)
+	if r == nil {
 		return msg.Content
 	}
 

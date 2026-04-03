@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/baidu/claude-code-go/internal/config"
+	"github.com/atom-yt/claude-code-go/internal/config"
 )
 
 func newTestModel(width, height int) Model {

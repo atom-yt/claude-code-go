@@ -34,7 +34,7 @@ Phase 8: 测试 + 打磨 (持续)
 
 - [ ] **1.1** 初始化 Go module
   ```bash
-  go mod init github.com/baidu/claude-code-go
+  go mod init github.com/atom-yt/claude-code-go
   ```
 
 - [ ] **1.2** 引入基础依赖
