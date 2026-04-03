@@ -1,0 +1,2 @@
+// Package write.
+package write

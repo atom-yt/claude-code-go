@@ -1,0 +1,62 @@
+// Package config handles settings loading and merging.
+package config
+
+// Settings holds fully resolved runtime configuration.
+type Settings struct {
+	Model       string
+	APIKey      string
+	Verbose     bool
+	Permissions PermissionsConfig
+	Hooks       map[string][]HookMatcherConfig // keyed by event name
+	MCPServers  map[string]MCPServerConfig
+}
+
+// PermissionsConfig mirrors the permissions block in settings.json.
+type PermissionsConfig struct {
+	DefaultMode string       `json:"defaultMode"`
+	Allow       []RuleConfig `json:"allow"`
+	Deny        []RuleConfig `json:"deny"`
+	Ask         []RuleConfig `json:"ask"`
+}
+
+// RuleConfig is one permission rule as stored in settings.json.
+type RuleConfig struct {
+	Tool    string `json:"tool"`
+	Path    string `json:"path"`
+	Command string `json:"command"`
+}
+
+// HookCommandConfig is one hook step as stored in settings.json.
+type HookCommandConfig struct {
+	Type    string            `json:"type"`
+	Command string            `json:"command"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Timeout int               `json:"timeout"`
+}
+
+// HookMatcherConfig is one hook matcher entry as stored in settings.json.
+type HookMatcherConfig struct {
+	Matcher string              `json:"matcher"`
+	Hooks   []HookCommandConfig `json:"hooks"`
+}
+
+// MCPServerConfig describes how to connect to one MCP server.
+type MCPServerConfig struct {
+	Type    string            `json:"type"`    // "stdio" | "sse" (sse not implemented yet)
+	Command string            `json:"command"` // for stdio: executable
+	Args    []string          `json:"args"`    // for stdio: arguments
+	Env     []string          `json:"env"`     // extra env vars ("KEY=VALUE")
+	URL     string            `json:"url"`     // for sse
+	Headers map[string]string `json:"headers"` // for sse
+}
+
+// settingsFile mirrors the full JSON structure of ~/.claude/settings.json.
+type settingsFile struct {
+	Model       string                         `json:"model"`
+	APIKey      string                         `json:"apiKey"`
+	Permissions PermissionsConfig              `json:"permissions"`
+	Hooks       map[string][]HookMatcherConfig `json:"hooks"`
+	MCPServers  map[string]MCPServerConfig     `json:"mcpServers"`
+	Env         map[string]string              `json:"env"`
+}

@@ -1,0 +1,2 @@
+// Package mcp.
+package mcp

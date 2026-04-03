@@ -1,0 +1,2 @@
+// Package glob.
+package glob

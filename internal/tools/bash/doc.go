@@ -1,0 +1,2 @@
+// Package bash.
+package bash

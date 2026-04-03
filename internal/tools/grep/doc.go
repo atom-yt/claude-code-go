@@ -1,0 +1,2 @@
+// Package grep.
+package grep

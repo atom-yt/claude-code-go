@@ -1,0 +1,2 @@
+// Package webfetch.
+package webfetch
