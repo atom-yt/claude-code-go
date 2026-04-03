@@ -98,7 +98,7 @@ func (m Model) renderMessage(idx int) []string {
 		}
 
 	case RoleAssistant:
-		lines = append(lines, m.styles.assistantLabel.Render("Claude:"))
+		lines = append(lines, m.styles.assistantLabel.Render("Atom:"))
 		content := msg.Content
 		if content == "" && msg.Streaming {
 			lines = append(lines, "  "+m.styles.toolText.Render("▋"))
