@@ -242,16 +242,18 @@ type providerInfo struct {
 }
 
 // knownProviders maps provider name → connection info.
+// BaseURL for OpenAI-compatible providers must include the version prefix (e.g. /v1)
+// because the client appends only /chat/completions.
 var knownProviders = map[string]providerInfo{
-	"openai":       {"https://api.openai.com", "openai"},
-	"kimi":         {"https://api.moonshot.cn", "openai"},
-	"moonshot":     {"https://api.moonshot.cn", "openai"},
-	"deepseek":     {"https://api.deepseek.com", "openai"},
-	"qwen":         {"https://dashscope.aliyuncs.com/compatible-mode", "openai"},
-	// ByteDance Ark — OpenAI-compatible endpoint (v3), model ark-code-latest
+	"openai":       {"https://api.openai.com/v1", "openai"},
+	"kimi":         {"https://api.moonshot.cn/v1", "openai"},
+	"moonshot":     {"https://api.moonshot.cn/v1", "openai"},
+	"deepseek":     {"https://api.deepseek.com/v1", "openai"},
+	"qwen":         {"https://dashscope.aliyuncs.com/compatible-mode/v1", "openai"},
+	// ByteDance Ark — OpenAI-compatible: /v3/chat/completions (no extra /v1)
 	"ark":          {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
 	"ark-openai":   {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
-	// ByteDance Ark — Anthropic-compatible endpoint
+	// ByteDance Ark — Anthropic-compatible: appends /v1/messages
 	"ark-anthropic": {"https://ark.cn-beijing.volces.com/api/coding", "anthropic"},
 }
 

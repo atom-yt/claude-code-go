@@ -168,7 +168,7 @@ func (c *OpenAIClient) stream(ctx context.Context, req MessagesRequest, ch chan<
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.BaseURL+"/v1/chat/completions", bytes.NewReader(body))
+		c.BaseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		ch <- APIEvent{Type: EventError, Error: fmt.Errorf("build request: %w", err)}
 		return
