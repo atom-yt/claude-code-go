@@ -5,6 +5,8 @@ package config
 type Settings struct {
 	Model       string
 	APIKey      string
+	Provider    string // "anthropic" (default) | "openai" | "kimi" | custom
+	BaseURL     string // overrides the provider's default base URL
 	Verbose     bool
 	Permissions PermissionsConfig
 	Hooks       map[string][]HookMatcherConfig // keyed by event name
@@ -55,6 +57,8 @@ type MCPServerConfig struct {
 type settingsFile struct {
 	Model       string                         `json:"model"`
 	APIKey      string                         `json:"apiKey"`
+	Provider    string                         `json:"provider"`
+	BaseURL     string                         `json:"baseURL"`
 	Permissions PermissionsConfig              `json:"permissions"`
 	Hooks       map[string][]HookMatcherConfig `json:"hooks"`
 	MCPServers  map[string]MCPServerConfig     `json:"mcpServers"`

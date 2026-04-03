@@ -12,6 +12,7 @@ const defaultModel = "claude-sonnet-4-6"
 type CLIFlags struct {
 	Model   string
 	APIKey  string
+	BaseURL string
 	Verbose bool
 }
 
@@ -27,7 +28,9 @@ func Load(flags CLIFlags) Settings {
 
 	// Merge: project overrides user for shared fields.
 	model := firstNonEmpty(flags.Model, os.Getenv("CLAUDE_MODEL"), project.Model, user.Model, defaultModel)
-	apiKey := firstNonEmpty(flags.APIKey, os.Getenv("ANTHROPIC_API_KEY"), project.APIKey, user.APIKey)
+	apiKey := firstNonEmpty(flags.APIKey, os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("OPENAI_API_KEY"), project.APIKey, user.APIKey)
+	provider := firstNonEmpty(os.Getenv("CLAUDE_PROVIDER"), project.Provider, user.Provider)
+	baseURL := firstNonEmpty(flags.BaseURL, os.Getenv("CLAUDE_BASE_URL"), project.BaseURL, user.BaseURL)
 
 	// Inject env vars from settings file.
 	for k, v := range user.Env {
@@ -46,6 +49,8 @@ func Load(flags CLIFlags) Settings {
 	return Settings{
 		Model:       model,
 		APIKey:      apiKey,
+		Provider:    provider,
+		BaseURL:     baseURL,
 		Verbose:     flags.Verbose,
 		Permissions: perms,
 		Hooks:       hooksCfg,

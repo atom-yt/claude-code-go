@@ -56,9 +56,11 @@ const (
 
 // Config carries CLI flag values from cobra.
 type Config struct {
-	Model   string
-	APIKey  string
-	Verbose bool
+	Model    string
+	APIKey   string
+	Provider string
+	BaseURL  string
+	Verbose  bool
 }
 
 // streamEventMsg wraps agent.StreamEvent for bubbletea routing.
@@ -125,10 +127,14 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 	settings := config.Load(config.CLIFlags{
 		Model:   cliCfg.Model,
 		APIKey:  cliCfg.APIKey,
+		BaseURL: cliCfg.BaseURL,
 		Verbose: cliCfg.Verbose,
 	})
 	if settings.APIKey == "" {
 		settings.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+	}
+	if settings.Provider == "" && cliCfg.Provider != "" {
+		settings.Provider = cliCfg.Provider
 	}
 
 	m := Model{
@@ -142,7 +148,7 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 	}
 
 	if settings.APIKey != "" {
-		client := api.New(settings.APIKey)
+		client := buildClient(settings)
 		registry := buildRegistry()
 
 		// Connect MCP servers and register their tools.
@@ -227,6 +233,41 @@ func (m *Model) clampScroll() {
 	if m.scrollOffset > 10000 {
 		m.scrollOffset = 10000
 	}
+}
+
+// knownProviders maps provider name → default base URL for OpenAI-compatible APIs.
+var knownProviders = map[string]string{
+	"openai":   "https://api.openai.com",
+	"kimi":     "https://api.moonshot.cn",
+	"moonshot": "https://api.moonshot.cn",
+	"deepseek": "https://api.deepseek.com",
+	"qwen":     "https://dashscope.aliyuncs.com/compatible-mode",
+}
+
+// buildClient creates the right API client based on provider/baseURL settings.
+func buildClient(s config.Settings) api.Streamer {
+	provider := strings.ToLower(s.Provider)
+
+	// Explicit OpenAI-compatible provider or custom base URL.
+	if provider != "" && provider != "anthropic" {
+		baseURL := s.BaseURL
+		if baseURL == "" {
+			if u, ok := knownProviders[provider]; ok {
+				baseURL = u
+			} else {
+				baseURL = s.BaseURL
+			}
+		}
+		return api.NewOpenAI(s.APIKey, baseURL)
+	}
+
+	// Custom base URL with no provider → OpenAI-compatible.
+	if s.BaseURL != "" {
+		return api.NewOpenAI(s.APIKey, s.BaseURL)
+	}
+
+	// Default: Anthropic.
+	return api.New(s.APIKey)
 }
 
 // buildRegistry registers all built-in tools.

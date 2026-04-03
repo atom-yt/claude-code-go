@@ -14,7 +14,7 @@ import (
 
 // Agent manages conversation history and runs the multi-turn tool loop.
 type Agent struct {
-	client   *api.Client
+	client   api.Streamer
 	model    string
 	registry *tools.Registry
 	checker  *permissions.Checker
@@ -23,7 +23,7 @@ type Agent struct {
 }
 
 // New creates an Agent. checker and executor may be nil.
-func New(client *api.Client, model string, registry *tools.Registry, checker *permissions.Checker, executor *hooks.Executor) *Agent {
+func New(client api.Streamer, model string, registry *tools.Registry, checker *permissions.Checker, executor *hooks.Executor) *Agent {
 	return &Agent{
 		client:   client,
 		model:    model,
