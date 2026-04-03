@@ -235,33 +235,55 @@ func (m *Model) clampScroll() {
 	}
 }
 
-// knownProviders maps provider name → default base URL for OpenAI-compatible APIs.
-var knownProviders = map[string]string{
-	"openai":   "https://api.openai.com",
-	"kimi":     "https://api.moonshot.cn",
-	"moonshot": "https://api.moonshot.cn",
-	"deepseek": "https://api.deepseek.com",
-	"qwen":     "https://dashscope.aliyuncs.com/compatible-mode",
+// providerInfo describes a known provider's default base URL and protocol.
+type providerInfo struct {
+	baseURL  string
+	protocol string // "anthropic" or "openai"
+}
+
+// knownProviders maps provider name → connection info.
+var knownProviders = map[string]providerInfo{
+	"openai":       {"https://api.openai.com", "openai"},
+	"kimi":         {"https://api.moonshot.cn", "openai"},
+	"moonshot":     {"https://api.moonshot.cn", "openai"},
+	"deepseek":     {"https://api.deepseek.com", "openai"},
+	"qwen":         {"https://dashscope.aliyuncs.com/compatible-mode", "openai"},
+	// ByteDance Ark — OpenAI-compatible endpoint (v3), model ark-code-latest
+	"ark":          {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
+	"ark-openai":   {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
+	// ByteDance Ark — Anthropic-compatible endpoint
+	"ark-anthropic": {"https://ark.cn-beijing.volces.com/api/coding", "anthropic"},
 }
 
 // buildClient creates the right API client based on provider/baseURL settings.
 func buildClient(s config.Settings) api.Streamer {
 	provider := strings.ToLower(s.Provider)
 
-	// Explicit OpenAI-compatible provider or custom base URL.
 	if provider != "" && provider != "anthropic" {
+		info, known := knownProviders[provider]
+
 		baseURL := s.BaseURL
-		if baseURL == "" {
-			if u, ok := knownProviders[provider]; ok {
-				baseURL = u
-			} else {
-				baseURL = s.BaseURL
-			}
+		if baseURL == "" && known {
+			baseURL = info.baseURL
+		}
+
+		protocol := "openai"
+		if known {
+			protocol = info.protocol
+		}
+
+		if protocol == "anthropic" {
+			return api.NewWithBaseURL(s.APIKey, baseURL)
 		}
 		return api.NewOpenAI(s.APIKey, baseURL)
 	}
 
-	// Custom base URL with no provider → OpenAI-compatible.
+	// Anthropic provider with a custom base URL (e.g. ark-anthropic endpoint via --base-url).
+	if provider == "anthropic" && s.BaseURL != "" {
+		return api.NewWithBaseURL(s.APIKey, s.BaseURL)
+	}
+
+	// Custom base URL only → assume OpenAI-compatible.
 	if s.BaseURL != "" {
 		return api.NewOpenAI(s.APIKey, s.BaseURL)
 	}

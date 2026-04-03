@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -22,11 +23,20 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// New returns a Client with sensible defaults.
+// New returns a Client pointing at the default Anthropic API.
 func New(apiKey string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		BaseURL:    defaultBaseURL,
+		HTTPClient: &http.Client{},
+	}
+}
+
+// NewWithBaseURL returns a Client pointing at a custom Anthropic-compatible base URL.
+func NewWithBaseURL(apiKey, baseURL string) *Client {
+	return &Client{
+		APIKey:     apiKey,
+		BaseURL:    strings.TrimRight(baseURL, "/"),
 		HTTPClient: &http.Client{},
 	}
 }

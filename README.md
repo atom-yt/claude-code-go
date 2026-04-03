@@ -136,6 +136,40 @@ Claude Code reads settings from (in priority order):
 | `PgUp` / `PgDn` | Scroll conversation |
 | Mouse wheel | Scroll conversation |
 
+## Multi-provider support
+
+In addition to Anthropic, any OpenAI-compatible or Anthropic-compatible provider is supported via `--provider` / `--base-url`.
+
+| Provider | `--provider` | Protocol | Default model |
+|----------|-------------|----------|---------------|
+| Anthropic | `anthropic` (default) | Anthropic | claude-sonnet-4-6 |
+| Kimi (Moonshot) | `kimi` | OpenAI | moonshot-v1-8k |
+| OpenAI | `openai` | OpenAI | gpt-4o |
+| DeepSeek | `deepseek` | OpenAI | deepseek-chat |
+| 通义千问 | `qwen` | OpenAI | qwen-plus |
+| 字节 Ark (OpenAI) | `ark` | OpenAI | ark-code-latest |
+| 字节 Ark (Anthropic) | `ark-anthropic` | Anthropic | ark-code-latest |
+
+**字节 Ark 示例：**
+
+```bash
+# OpenAI-compatible endpoint
+claude --provider ark --model ark-code-latest --api-key $ARK_API_KEY
+
+# Anthropic-compatible endpoint
+claude --provider ark-anthropic --model ark-code-latest --api-key $ARK_API_KEY
+```
+
+**settings.json 配置：**
+
+```json
+{
+  "provider": "ark",
+  "model": "ark-code-latest",
+  "apiKey": "your-ark-api-key"
+}
+```
+
 ## Development
 
 ```bash
