@@ -47,6 +47,44 @@ func (e *Executor) FireStop(ctx context.Context) {
 	_, _ = e.fire(ctx, EventStop, "", nil)
 }
 
+// FireUserPromptSubmit runs user_prompt_submit hooks when the user submits a prompt.
+// This allows logging, validation, or modification of user input before processing.
+func (e *Executor) FireUserPromptSubmit(ctx context.Context, userPrompt string) {
+	hookInput := Input{
+		Event:      EventUserPromptSubmit,
+		SessionID:  e.sessionID,
+		UserPrompt: userPrompt,
+	}
+	_, _ = e.fireWithInput(ctx, EventUserPromptSubmit, hookInput)
+}
+
+// fireWithInput runs all matching hooks with the provided input.
+func (e *Executor) fireWithInput(ctx context.Context, event Event, hookInput Input) (Result, error) {
+	matchers, ok := e.config[event]
+	if !ok {
+		return Result{}, nil
+	}
+
+	var last Result
+	for _, m := range matchers {
+		if !matchTool(m.ToolPattern, "") {
+			continue
+		}
+		for _, cmd := range m.Hooks {
+			result, err := run(ctx, cmd, hookInput)
+			if err != nil {
+				// Hook execution error: log and continue (don't block).
+				continue
+			}
+			last = result
+			if result.Decision == "deny" {
+				return result, nil
+			}
+		}
+	}
+	return last, nil
+}
+
 // fire runs all matching hooks for the given event and returns the first
 // deny decision, or the last result if none denies.
 func (e *Executor) fire(ctx context.Context, event Event, toolName string, toolInput map[string]any) (Result, error) {

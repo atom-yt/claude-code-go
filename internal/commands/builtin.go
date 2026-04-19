@@ -16,6 +16,8 @@ func All() []Command {
 		&compactCmd{},
 		&buddyCmd{},
 		&shortcutsCmd{},
+		&commitCmd{},
+		&prCmd{},
 	}
 }
 

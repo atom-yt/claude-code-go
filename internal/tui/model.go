@@ -19,11 +19,16 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/permissions"
 	"github.com/atom-yt/claude-code-go/internal/session"
 	"github.com/atom-yt/claude-code-go/internal/tools"
+	toolask "github.com/atom-yt/claude-code-go/internal/tools/ask"
 	toolbash "github.com/atom-yt/claude-code-go/internal/tools/bash"
 	tooledit "github.com/atom-yt/claude-code-go/internal/tools/edit"
 	toolglob "github.com/atom-yt/claude-code-go/internal/tools/glob"
 	toolgrep "github.com/atom-yt/claude-code-go/internal/tools/grep"
+	toolplanmode "github.com/atom-yt/claude-code-go/internal/tools/planmode"
 	toolread "github.com/atom-yt/claude-code-go/internal/tools/read"
+	tasktool "github.com/atom-yt/claude-code-go/internal/tools/task"
+	tooltodo "github.com/atom-yt/claude-code-go/internal/tools/todo"
+	toolwebfetch "github.com/atom-yt/claude-code-go/internal/tools/webfetch"
 	toolwebsearch "github.com/atom-yt/claude-code-go/internal/tools/websearch"
 	toolwrite "github.com/atom-yt/claude-code-go/internal/tools/write"
 )
@@ -396,7 +401,18 @@ func buildRegistry() *tools.Registry {
 	r.Register(&toolbash.Tool{})
 	r.Register(&toolglob.Tool{})
 	r.Register(&toolgrep.Tool{})
+	r.Register(&toolwebfetch.Tool{})
 	r.Register(&toolwebsearch.Tool{})
+	r.Register(&toolplanmode.EnterPlanModeTool{})
+	r.Register(&toolplanmode.ExitPlanModeTool{})
+	r.Register(&tooltodo.Tool{})
+	r.Register(&tasktool.TaskCreateTool{})
+	r.Register(&tasktool.TaskGetTool{})
+	r.Register(&tasktool.TaskListTool{})
+	r.Register(&tasktool.TaskUpdateTool{})
+	r.Register(&tasktool.TaskDeleteTool{})
+	r.Register(&tasktool.TaskOutputTool{})
+	r.Register(&toolask.Tool{})
 	return r
 }
 

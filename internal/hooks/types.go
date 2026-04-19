@@ -5,10 +5,11 @@ package hooks
 type Event string
 
 const (
-	EventSessionStart Event = "session_start"
-	EventPreToolCall  Event = "pre_tool_call"
-	EventPostToolCall Event = "post_tool_call"
-	EventStop         Event = "stop"
+	EventSessionStart      Event = "session_start"
+	EventPreToolCall       Event = "pre_tool_call"
+	EventPostToolCall      Event = "post_tool_call"
+	EventUserPromptSubmit  Event = "user_prompt_submit"
+	EventStop              Event = "stop"
 )
 
 // CommandType identifies how a hook is executed.
@@ -38,10 +39,11 @@ type Matcher struct {
 
 // Input is the payload passed to a hook command (serialised as JSON env vars).
 type Input struct {
-	Event     Event          `json:"event"`
-	ToolName  string         `json:"tool_name,omitempty"`
-	ToolInput map[string]any `json:"tool_input,omitempty"`
-	SessionID string         `json:"session_id,omitempty"`
+	Event      Event          `json:"event"`
+	ToolName   string         `json:"tool_name,omitempty"`
+	ToolInput  map[string]any `json:"tool_input,omitempty"`
+	SessionID  string         `json:"session_id,omitempty"`
+	UserPrompt string         `json:"user_prompt,omitempty"` // User's input text for user_prompt_submit event
 }
 
 // Result is the outcome of running a hook command.

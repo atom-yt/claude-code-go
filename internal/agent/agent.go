@@ -73,6 +73,11 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 	}()
 	defer close(ch)
 
+	// Fire user_prompt_submit hook before processing user input
+	if a.executor != nil {
+		a.executor.FireUserPromptSubmit(ctx, userText)
+	}
+
 	a.history = append(a.history, api.TextMessage(api.RoleUser, userText))
 
 	// Build tool specs for the API.
