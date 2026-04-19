@@ -64,7 +64,8 @@ func (c *helpCmd) Execute(_ context.Context, _ []string, _ *Context) (string, er
 		}
 		lines = append(lines, fmt.Sprintf("  /%s%s — %s", cmd.Name(), aliases, cmd.Description()))
 	}
-	return strings.Join(lines, "\n"), nil
+	// Use raw marker to skip markdown processing and preserve newlines
+	return "<!-- raw -->\n" + strings.Join(lines, "\n"), nil
 }
 
 // ---- /clear ----
@@ -276,5 +277,5 @@ func (c *shortcutsCmd) Execute(_ context.Context, _ []string, _ *Context) (strin
 		lines = append(lines, fmt.Sprintf("  %s%s  —  %s", s.key, padding, s.description))
 	}
 
-	return strings.Join(lines, "\n"), nil
+	return "<!-- raw -->\n" + strings.Join(lines, "\n"), nil
 }
