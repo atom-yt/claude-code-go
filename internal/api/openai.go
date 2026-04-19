@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // OpenAIClient is an OpenAI-compatible streaming client.
@@ -20,11 +21,12 @@ type OpenAIClient struct {
 }
 
 // NewOpenAI returns an OpenAIClient pointing at the given base URL.
+// Sets a 120-second timeout for requests.
 func NewOpenAI(apiKey, baseURL string) *OpenAIClient {
 	return &OpenAIClient{
 		APIKey:     apiKey,
 		BaseURL:    strings.TrimRight(baseURL, "/"),
-		HTTPClient: &http.Client{},
+		HTTPClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -23,20 +24,22 @@ type Client struct {
 }
 
 // New returns a Client pointing at the default Anthropic API.
+// Sets a 120-second timeout for requests.
 func New(apiKey string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		BaseURL:    defaultBaseURL,
-		HTTPClient: &http.Client{},
+		HTTPClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
 // NewWithBaseURL returns a Client pointing at a custom Anthropic-compatible base URL.
+// Sets a 120-second timeout for requests.
 func NewWithBaseURL(apiKey, baseURL string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		BaseURL:    strings.TrimRight(baseURL, "/"),
-		HTTPClient: &http.Client{},
+		HTTPClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
