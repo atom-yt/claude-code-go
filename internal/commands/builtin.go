@@ -20,6 +20,7 @@ func All() []Command {
 		&prCmd{},
 		&reviewCmd{},
 		&securityReviewCmd{},
+		&dreamCmd{},
 	}
 }
 
@@ -295,4 +296,42 @@ func (c *shortcutsCmd) Execute(_ context.Context, _ []string, _ *Context) (strin
 	}
 
 	return "<!-- raw -->\n" + strings.Join(lines, "\n"), nil
+}
+
+// ---- /dream ----
+
+type dreamCmd struct{}
+
+func (c *dreamCmd) Name() string        { return "dream" }
+func (c *dreamCmd) Aliases() []string   { return nil }
+func (c *dreamCmd) Description() string { return "Review sessions and consolidate memory, or show status" }
+
+func (c *dreamCmd) Execute(ctx context.Context, args []string, cmdCtx *Context) (string, error) {
+	// Check for "status" subcommand
+	if len(args) > 0 && args[0] == "status" {
+		if cmdCtx.ConsolidateStatus == nil {
+			return "Memory consolidation not available", nil
+		}
+		status, err := cmdCtx.ConsolidateStatus(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to get consolidation status: %w", err)
+		}
+		return "<!-- raw -->\n" + status, nil
+	}
+
+	// Trigger consolidation
+	if cmdCtx.ConsolidateMemory == nil {
+		return "Memory consolidation not available", nil
+	}
+
+	result, err := cmdCtx.ConsolidateMemory(ctx)
+	if err != nil {
+		return "", fmt.Errorf("consolidation failed: %w", err)
+	}
+
+	if result == "" {
+		return "Memory consolidation complete. No updates needed.", nil
+	}
+
+	return "Memory consolidation complete.\n\n" + result, nil
 }

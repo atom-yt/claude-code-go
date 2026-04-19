@@ -123,6 +123,11 @@ type Model struct {
 	compactCooldown    time.Duration
 	compactKeepRecent  int
 
+	// Auto-dream configuration.
+	autoDreamEnabled       bool
+	minConsolidateHours    int
+	minConsolidateSessions int
+
 	// Slash commands.
 	cmdRegistry *commands.Registry
 
@@ -220,6 +225,21 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 	// Allow context window override from settings
 	if settings.ContextWindow > 0 {
 		m.contextWindow = settings.ContextWindow
+	}
+
+	// Load auto-dream configuration
+	m.autoDreamEnabled = settings.AutoDreamEnabled
+
+	if settings.MinConsolidateHours > 0 {
+		m.minConsolidateHours = settings.MinConsolidateHours
+	} else {
+		m.minConsolidateHours = 24 // Default 24 hours
+	}
+
+	if settings.MinConsolidateSessions > 0 {
+		m.minConsolidateSessions = settings.MinConsolidateSessions
+	} else {
+		m.minConsolidateSessions = 5 // Default 5 sessions
 	}
 
 	if settings.APIKey != "" {

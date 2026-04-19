@@ -18,6 +18,12 @@ type Settings struct {
 	CompactCooldown   int     // Cooldown time in minutes (default: 5)
 	CompactKeepRecent int     // Number of recent messages to keep (default: 10)
 	ContextWindow     int     // Override context window size in tokens
+
+	// Auto-dream configuration
+	AutoDreamEnabled       bool   // Enable/disable auto-dream (default: false)
+	AutoMemoryDirectory    string // Optional custom memory directory path
+	MinConsolidateHours    int    // Min hours since last consolidation (default: 24)
+	MinConsolidateSessions int    // Min sessions to trigger consolidation (default: 5)
 }
 
 // PermissionsConfig mirrors the permissions block in settings.json.
@@ -77,4 +83,10 @@ type settingsFile struct {
 	CompactCooldown   int     `json:"compactCooldown"`
 	CompactKeepRecent int     `json:"compactKeepRecent"`
 	ContextWindow     int     `json:"contextWindow"`
+
+	// Auto-dream configuration
+	AutoDreamEnabled       bool   `json:"autoDreamEnabled"`
+	AutoMemoryDirectory    string `json:"autoMemoryDirectory"`
+	MinConsolidateHours    int    `json:"minConsolidateHours"`
+	MinConsolidateSessions int    `json:"minConsolidateSessions"`
 }

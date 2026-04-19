@@ -10,6 +10,7 @@ import (
 
 	"github.com/atom-yt/claude-code-go/internal/agent"
 	"github.com/atom-yt/claude-code-go/internal/commands"
+	"github.com/atom-yt/claude-code-go/internal/memory"
 	"github.com/atom-yt/claude-code-go/internal/session"
 )
 
@@ -308,6 +309,12 @@ func (m *Model) buildCommandContext() *commands.Context {
 		CompactHistory: func(ctx context.Context) error {
 			return m.compactHistory(ctx)
 		},
+		ConsolidateMemory: func(ctx context.Context) (string, error) {
+			return m.consolidateMemory(ctx)
+		},
+		ConsolidateStatus: func(ctx context.Context) (string, error) {
+			return m.consolidateStatus(ctx)
+		},
 	}
 }
 
@@ -384,6 +391,11 @@ func (m Model) handleStreamEvent(ev agent.StreamEvent) (tea.Model, tea.Cmd) {
 		// Check if we should auto-compact
 		if m.shouldAutoCompact() {
 			go m.triggerAutoCompact(context.Background())
+		}
+
+		// Trigger auto-dream if enabled
+		if m.autoDreamEnabled {
+			go m.triggerAutoDream(context.Background())
 		}
 		return m, nil
 
@@ -522,4 +534,57 @@ func spinnerTick() tea.Cmd {
 	return tea.Tick(80*time.Millisecond, func(_ time.Time) tea.Msg {
 		return spinnerTickMsg{}
 	})
+}
+
+// consolidateMemory performs memory consolidation.
+func (m *Model) consolidateMemory(ctx context.Context) (string, error) {
+	if m.ag == nil {
+		return "", fmt.Errorf("no agent available")
+	}
+
+	// Create a consolidator
+	consolidator, err := memory.NewConsolidator(m.cfg, m.ag.GetClient())
+	if err != nil {
+		return "", fmt.Errorf("failed to create consolidator: %w", err)
+	}
+
+	// Perform consolidation
+	result, err := consolidator.Consolidate(ctx)
+	if err != nil {
+		return "", fmt.Errorf("consolidation failed: %w", err)
+	}
+
+	return result, nil
+}
+
+// consolidateStatus returns the current consolidation status.
+func (m *Model) consolidateStatus(ctx context.Context) (string, error) {
+	return memory.BuildStatusPrompt()
+}
+
+// triggerAutoDream triggers auto-dream consolidation in the background.
+func (m *Model) triggerAutoDream(ctx context.Context) {
+	if m.ag == nil {
+		return
+	}
+
+	// Create a consolidator
+	consolidator, err := memory.NewConsolidator(m.cfg, m.ag.GetClient())
+	if err != nil {
+		return
+	}
+
+	// Check if consolidation should run
+	should, reason := consolidator.ShouldConsolidate(ctx)
+	if !should {
+		return
+	}
+
+	// Show a brief message in the UI
+	// Note: We can't directly modify m.messages from a goroutine safely,
+	// so we skip the UI notification for now
+	_ = reason
+
+	// Run consolidation in the background
+	consolidator.RunBackgroundConsolidation(ctx)
 }

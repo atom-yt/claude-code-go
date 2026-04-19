@@ -23,6 +23,10 @@ type Context struct {
 	GetCost func() (inputTokens, outputTokens int)
 	// CompactHistory triggers history compaction.
 	CompactHistory func(ctx context.Context) error
+	// ConsolidateMemory triggers memory consolidation.
+	ConsolidateMemory func(ctx context.Context) (string, error)
+	// ConsolidateStatus returns the consolidation status.
+	ConsolidateStatus func(ctx context.Context) (string, error)
 }
 
 // Message is a simplified message for command use.

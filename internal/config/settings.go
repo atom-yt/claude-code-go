@@ -72,6 +72,12 @@ func Load(flags CLIFlags) Settings {
 	compactKeepRecent := 10
 	contextWindow := 0
 
+	// Load auto-dream configuration with project override
+	autoDreamEnabled := false
+	autoMemoryDirectory := ""
+	minConsolidateHours := 24
+	minConsolidateSessions := 5
+
 	if project.AutoCompact != false { // Explicit false check
 		autoCompact = project.AutoCompact
 	}
@@ -107,20 +113,49 @@ func Load(flags CLIFlags) Settings {
 		contextWindow = user.ContextWindow
 	}
 
+	// Load auto-dream configuration
+	if project.AutoDreamEnabled {
+		autoDreamEnabled = project.AutoDreamEnabled
+	} else if user.AutoDreamEnabled {
+		autoDreamEnabled = user.AutoDreamEnabled
+	}
+
+	if project.AutoMemoryDirectory != "" {
+		autoMemoryDirectory = project.AutoMemoryDirectory
+	} else if user.AutoMemoryDirectory != "" {
+		autoMemoryDirectory = user.AutoMemoryDirectory
+	}
+
+	if project.MinConsolidateHours > 0 {
+		minConsolidateHours = project.MinConsolidateHours
+	} else if user.MinConsolidateHours > 0 {
+		minConsolidateHours = user.MinConsolidateHours
+	}
+
+	if project.MinConsolidateSessions > 0 {
+		minConsolidateSessions = project.MinConsolidateSessions
+	} else if user.MinConsolidateSessions > 0 {
+		minConsolidateSessions = user.MinConsolidateSessions
+	}
+
 	return Settings{
-		Model:             model,
-		APIKey:            apiKey,
-		Provider:          provider,
-		BaseURL:           baseURL,
-		Verbose:           flags.Verbose,
-		Permissions:       perms,
-		Hooks:             hooksCfg,
-		MCPServers:        mcpServers,
-		AutoCompact:       autoCompact,
-		CompactThreshold:  compactThreshold,
-		CompactCooldown:   compactCooldown,
-		CompactKeepRecent: compactKeepRecent,
-		ContextWindow:     contextWindow,
+		Model:                  model,
+		APIKey:                 apiKey,
+		Provider:               provider,
+		BaseURL:                baseURL,
+		Verbose:                flags.Verbose,
+		Permissions:            perms,
+		Hooks:                  hooksCfg,
+		MCPServers:             mcpServers,
+		AutoCompact:            autoCompact,
+		CompactThreshold:       compactThreshold,
+		CompactCooldown:        compactCooldown,
+		CompactKeepRecent:      compactKeepRecent,
+		ContextWindow:          contextWindow,
+		AutoDreamEnabled:       autoDreamEnabled,
+		AutoMemoryDirectory:    autoMemoryDirectory,
+		MinConsolidateHours:    minConsolidateHours,
+		MinConsolidateSessions: minConsolidateSessions,
 	}
 }
 
