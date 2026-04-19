@@ -65,6 +65,48 @@ func Load(flags CLIFlags) Settings {
 	hooksCfg := mergeHooks(user.Hooks, project.Hooks)
 	mcpServers := mergeMCPServers(user.MCPServers, project.MCPServers)
 
+	// Load compact configuration with project override
+	autoCompact := true
+	compactThreshold := 0.8
+	compactCooldown := 5
+	compactKeepRecent := 10
+	contextWindow := 0
+
+	if project.AutoCompact != false { // Explicit false check
+		autoCompact = project.AutoCompact
+	}
+	if user.AutoCompact != false {
+		autoCompact = user.AutoCompact
+	}
+
+	if project.CompactThreshold > 0 {
+		compactThreshold = project.CompactThreshold
+	}
+	if user.CompactThreshold > 0 {
+		compactThreshold = user.CompactThreshold
+	}
+
+	if project.CompactCooldown > 0 {
+		compactCooldown = project.CompactCooldown
+	}
+	if user.CompactCooldown > 0 {
+		compactCooldown = user.CompactCooldown
+	}
+
+	if project.CompactKeepRecent > 0 {
+		compactKeepRecent = project.CompactKeepRecent
+	}
+	if user.CompactKeepRecent > 0 {
+		compactKeepRecent = user.CompactKeepRecent
+	}
+
+	if project.ContextWindow > 0 {
+		contextWindow = project.ContextWindow
+	}
+	if user.ContextWindow > 0 {
+		contextWindow = user.ContextWindow
+	}
+
 	return Settings{
 		Model:       model,
 		APIKey:      apiKey,
@@ -74,6 +116,11 @@ func Load(flags CLIFlags) Settings {
 		Permissions: perms,
 		Hooks:       hooksCfg,
 		MCPServers:  mcpServers,
+		AutoCompact:        autoCompact,
+		CompactThreshold:   compactThreshold,
+		CompactCooldown:    compactCooldown,
+		CompactKeepRecent:  compactKeepRecent,
+		ContextWindow:      contextWindow,
 	}
 }
 

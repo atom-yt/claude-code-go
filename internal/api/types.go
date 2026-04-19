@@ -99,6 +99,7 @@ type APIEvent struct {
 	ToolUse    *ToolUse // non-nil for EventToolUse
 	StopReason string   // non-empty for EventMessageStop
 	Error      error    // non-nil for EventError
+	Usage      *Usage   // non-nil when usage data is available
 }
 
 // Usage tracks token consumption reported at end of stream.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -95,9 +96,25 @@ type Model struct {
 	askPending bool
 	askReplyCh chan<- bool
 
-	// Cumulative token usage.
+	// Cumulative token usage (for cost tracking, persists across sessions).
 	totalInputTokens  int
 	totalOutputTokens int
+
+	// Session token usage (for progress bar, reset on compact).
+	sessionInputTokens  int
+	sessionOutputTokens int
+
+	// Context window for current model.
+	contextWindow int
+
+	// Last compact time (to prevent frequent compacts).
+	lastCompactTime time.Time
+
+	// Auto-compact configuration.
+	autoCompactEnabled  bool
+	compactThreshold    float64
+	compactCooldown     time.Duration
+	compactKeepRecent   int
 
 	// Slash commands.
 	cmdRegistry *commands.Registry
@@ -155,6 +172,38 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		cmdRegistry: commands.NewRegistry(),
 		sessionID:   session.NewID(),
 		mdRenderer:  &glamourRenderer{},
+		// Initialize compact config
+		contextWindow: getContextWindow(settings.Model),
+	}
+
+	// Load compact configuration
+	m.autoCompactEnabled = settings.AutoCompact
+	if !m.autoCompactEnabled {
+		// Default to true if not explicitly set
+		m.autoCompactEnabled = true
+	}
+
+	if settings.CompactThreshold > 0 {
+		m.compactThreshold = settings.CompactThreshold
+	} else {
+		m.compactThreshold = 0.8 // Default 80%
+	}
+
+	if settings.CompactCooldown > 0 {
+		m.compactCooldown = time.Duration(settings.CompactCooldown) * time.Minute
+	} else {
+		m.compactCooldown = 5 * time.Minute // Default 5 minutes
+	}
+
+	if settings.CompactKeepRecent > 0 {
+		m.compactKeepRecent = settings.CompactKeepRecent
+	} else {
+		m.compactKeepRecent = 10 // Default 10 messages
+	}
+
+	// Allow context window override from settings
+	if settings.ContextWindow > 0 {
+		m.contextWindow = settings.ContextWindow
 	}
 
 	if settings.APIKey != "" {
@@ -193,6 +242,9 @@ func NewModelWithHistory(cliCfg Config, rec session.Record) Model {
 	m.sessionID = rec.ID
 	m.totalInputTokens = rec.InputTokens
 	m.totalOutputTokens = rec.OutputTokens
+	// Reset session tokens to 0 when loading a session
+	m.sessionInputTokens = 0
+	m.sessionOutputTokens = 0
 
 	// Replay messages into the UI.
 	for _, msg := range rec.Messages {
@@ -267,6 +319,35 @@ var knownProviders = map[string]providerInfo{
 	"ark-openai":   {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
 	// ByteDance Ark — Anthropic-compatible: appends /v1/messages
 	"ark-anthropic": {"https://ark.cn-beijing.volces.com/api/coding", "anthropic"},
+}
+
+// modelContextWindows maps model names to their context window sizes (in tokens).
+var modelContextWindows = map[string]int{
+	"claude-sonnet-4-6": 200000,
+	"claude-3-opus":      200000,
+	"claude-3-sonnet":    200000,
+	"claude-3-haiku":     200000,
+	"claude-3.5-sonnet":  200000,
+	"claude-3.5-haiku":   200000,
+	"gpt-4o":            128000,
+	"gpt-4-turbo":       128000,
+	"gpt-4":             8192,
+	"gpt-3.5-turbo":     16385,
+	"deepseek-chat":      128000,
+	"deepseek-coder":     128000,
+}
+
+// getContextWindow returns the context window size for a given model.
+// Returns defaultMaxTokens (8096) for unknown models.
+func getContextWindow(model string) int {
+	// First check if model matches a known prefix
+	for knownModel, window := range modelContextWindows {
+		if model == knownModel || len(model) > len(knownModel) && model[:len(knownModel)] == knownModel {
+			return window
+		}
+	}
+	// Fallback to default
+	return 8096
 }
 
 // buildClient creates the right API client based on provider/baseURL settings.
@@ -461,4 +542,91 @@ func buildStyles() styles {
 		autocompleteItem:     lipgloss.NewStyle().Foreground(lipgloss.Color("251")),
 		autocompleteSelected: lipgloss.NewStyle().Background(lipgloss.Color("24")).Foreground(lipgloss.Color("231")).Bold(true),
 	}
+}
+
+// shouldAutoCompact checks if auto-compact should be triggered.
+func (m *Model) shouldAutoCompact() bool {
+	if !m.autoCompactEnabled {
+		return false
+	}
+
+	total := m.sessionInputTokens + m.sessionOutputTokens
+	if m.contextWindow == 0 {
+		return false
+	}
+
+	// Check if usage >= threshold
+	if float64(total) < float64(m.contextWindow)*m.compactThreshold {
+		return false
+	}
+
+	// Check cooldown period
+	if !m.lastCompactTime.IsZero() && time.Since(m.lastCompactTime) < m.compactCooldown {
+		return false
+	}
+
+	return true
+}
+
+// triggerAutoCompact initiates an auto-compact operation.
+func (m *Model) triggerAutoCompact(ctx context.Context) error {
+	// Show message in UI
+	m.messages = append(m.messages, ChatMessage{
+		Role:    RoleAssistant,
+		Content: "Auto-compacting conversation history...",
+	})
+
+	if err := m.compactHistory(ctx); err != nil {
+		m.messages = append(m.messages, ChatMessage{
+			Role:    RoleError,
+			Content: fmt.Sprintf("Auto-compact failed: %v", err),
+		})
+		return err
+	}
+
+	// Save session
+	go m.saveSession()
+	return nil
+}
+
+// compactHistory compacts conversation history by summarizing old messages.
+func (m *Model) compactHistory(ctx context.Context) error {
+	if m.ag == nil {
+		return fmt.Errorf("no agent available")
+	}
+
+	// Get old messages to summarize (excluding recent ones)
+	keepRecent := m.compactKeepRecent
+	if len(m.messages) <= keepRecent {
+		// Not enough messages to compact
+		return nil
+	}
+
+	// This is a simplified compact that just keeps recent messages
+	// The summary generation is a TODO for future implementation
+
+	// Keep recent messages and add a system message about compaction
+	newMessages := []ChatMessage{
+		{Role: RoleUser, Content: "<!-- History compacted: older messages have been removed to save context. -->"},
+	}
+	newMessages = append(newMessages, m.messages[len(m.messages)-keepRecent:]...)
+
+	m.messages = newMessages
+
+	// Update agent history to remove old messages
+	// Get current history
+	history := m.ag.History()
+	// Keep only recent messages from history (accounting for user/assistant pairs)
+	// This is a simple approach - keep last N messages worth of history
+	if len(history) > keepRecent*2 { // *2 because of user/assistant pairs
+		history = history[len(history)-keepRecent*2:]
+	}
+	m.ag.SetHistory(history)
+
+	// Reset session token counters
+	m.sessionInputTokens = 0
+	m.sessionOutputTokens = 0
+	m.lastCompactTime = time.Now()
+
+	return nil
 }

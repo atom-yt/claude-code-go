@@ -135,6 +135,10 @@ func dispatchEvent(evType, data string, pending map[int]*pendingToolUse, ch chan
 			Delta struct {
 				StopReason string `json:"stop_reason"`
 			} `json:"delta"`
+			Usage struct {
+				InputTokens  int `json:"input_tokens"`
+				OutputTokens int `json:"output_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &payload); err != nil {
 			return false
@@ -142,6 +146,15 @@ func dispatchEvent(evType, data string, pending map[int]*pendingToolUse, ch chan
 		if payload.Delta.StopReason != "" {
 			ch <- APIEvent{Type: EventMessageStop, StopReason: payload.Delta.StopReason}
 			return true
+		}
+		// Emit usage if available
+		if payload.Usage.InputTokens > 0 || payload.Usage.OutputTokens > 0 {
+			ch <- APIEvent{
+				Usage: &Usage{
+					InputTokens:  payload.Usage.InputTokens,
+					OutputTokens: payload.Usage.OutputTokens,
+				},
+			}
 		}
 
 	case "message_stop":

@@ -253,7 +253,13 @@ func (m Model) renderStatusBar() string {
 		parts = append(parts, "cwd:"+cwd)
 	}
 	if m.totalOutputTokens > 0 {
-		parts = append(parts, fmt.Sprintf("tokens:%d↑%d↓", m.totalInputTokens, m.totalOutputTokens))
+		// Use progress bar instead of plain text when session tokens are tracked
+		progressBar := m.renderTokenProgressBar()
+		if progressBar != "" {
+			parts = append(parts, progressBar)
+		} else {
+			parts = append(parts, fmt.Sprintf("tokens:%d↑%d↓", m.totalInputTokens, m.totalOutputTokens))
+		}
 	}
 
 	statusText := string(m.status)
@@ -338,4 +344,36 @@ func (m Model) renderAutocomplete() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// renderTokenProgressBar renders a visual progress bar for token usage.
+func (m Model) renderTokenProgressBar() string {
+	total := m.sessionInputTokens + m.sessionOutputTokens
+	if total == 0 || m.contextWindow == 0 {
+		return ""
+	}
+
+	percentage := float64(total) / float64(m.contextWindow)
+	filled := int(percentage * 10)
+	if filled > 10 {
+		filled = 10
+	}
+
+	// Choose color based on percentage
+	var barColor lipgloss.Color
+	switch {
+	case percentage < 0.6:
+		barColor = lipgloss.Color("2") // Green
+	case percentage < 0.8:
+		barColor = lipgloss.Color("3") // Yellow
+	default:
+		barColor = lipgloss.Color("1") // Red
+	}
+
+	// Build progress bar with block characters
+	filledBar := strings.Repeat("■", filled)
+	emptyBar := strings.Repeat("□", 10-filled)
+
+	barStyle := lipgloss.NewStyle().Foreground(barColor)
+	return barStyle.Render(fmt.Sprintf("[%s%s] %d%%", filledBar, emptyBar, int(percentage*100)))
 }

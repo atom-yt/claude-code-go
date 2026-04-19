@@ -200,6 +200,11 @@ type openAIChunk struct {
 		} `json:"delta"`
 		FinishReason *string `json:"finish_reason"`
 	} `json:"choices"`
+	Usage *struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens     int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
@@ -248,6 +253,20 @@ func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue
 		}
+		if len(chunk.Choices) == 0 && chunk.Usage == nil {
+			continue
+		}
+
+		// Handle usage if present (typically in final chunk)
+		if chunk.Usage != nil {
+			ch <- APIEvent{
+				Usage: &Usage{
+					InputTokens:  chunk.Usage.PromptTokens,
+					OutputTokens: chunk.Usage.CompletionTokens,
+				},
+			}
+		}
+
 		if len(chunk.Choices) == 0 {
 			continue
 		}

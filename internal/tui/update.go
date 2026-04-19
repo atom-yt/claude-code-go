@@ -305,6 +305,9 @@ func (m *Model) buildCommandContext() *commands.Context {
 		GetCost: func() (int, int) {
 			return m.totalInputTokens, m.totalOutputTokens
 		},
+		CompactHistory: func(ctx context.Context) error {
+			return m.compactHistory(ctx)
+		},
 	}
 }
 
@@ -377,6 +380,11 @@ func (m Model) handleStreamEvent(ev agent.StreamEvent) (tea.Model, tea.Cmd) {
 		m.scrollOffset = 0
 		// Persist session asynchronously.
 		go m.saveSession()
+
+		// Check if we should auto-compact
+		if m.shouldAutoCompact() {
+			go m.triggerAutoCompact(context.Background())
+		}
 		return m, nil
 
 	case agent.EventError:
@@ -389,6 +397,14 @@ func (m Model) handleStreamEvent(ev agent.StreamEvent) (tea.Model, tea.Cmd) {
 		})
 		m.status = StatusReady
 		return m, nil
+	}
+
+	// Handle usage events (forwarded from agent)
+	if ev.Usage != nil {
+		m.sessionInputTokens += ev.Usage.InputTokens
+		m.sessionOutputTokens += ev.Usage.OutputTokens
+		m.totalInputTokens += ev.Usage.InputTokens
+		m.totalOutputTokens += ev.Usage.OutputTokens
 	}
 
 	return m, nil

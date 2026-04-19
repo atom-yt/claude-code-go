@@ -1,7 +1,11 @@
 // Package agent implements the main AI agent loop.
 package agent
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/atom-yt/claude-code-go/internal/api"
+)
 
 // EventType labels each event sent through the stream channel.
 type EventType string
@@ -23,5 +27,6 @@ type StreamEvent struct {
 	ToolOutput string    // EventToolResult
 	ToolIsError bool     // EventToolResult
 	Error      error     // EventError
+	Usage      *api.Usage // Token usage from API response
 	NextCmd    tea.Cmd   // injected by TUI to chain channel reads
 }

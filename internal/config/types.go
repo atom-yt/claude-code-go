@@ -11,6 +11,13 @@ type Settings struct {
 	Permissions PermissionsConfig
 	Hooks       map[string][]HookMatcherConfig // keyed by event name
 	MCPServers  map[string]MCPServerConfig
+
+	// Auto-compact configuration
+	AutoCompact        bool    // Enable/disable auto-compact (default: true)
+	CompactThreshold   float64 // Percentage threshold (0.0-1.0, default: 0.8)
+	CompactCooldown    int     // Cooldown time in minutes (default: 5)
+	CompactKeepRecent  int     // Number of recent messages to keep (default: 10)
+	ContextWindow      int     // Override context window size in tokens
 }
 
 // PermissionsConfig mirrors the permissions block in settings.json.
@@ -63,4 +70,11 @@ type settingsFile struct {
 	Hooks       map[string][]HookMatcherConfig `json:"hooks"`
 	MCPServers  map[string]MCPServerConfig     `json:"mcpServers"`
 	Env         map[string]string              `json:"env"`
+
+	// Auto-compact configuration
+	AutoCompact        bool    `json:"autoCompact"`
+	CompactThreshold   float64 `json:"compactThreshold"`
+	CompactCooldown    int     `json:"compactCooldown"`
+	CompactKeepRecent  int     `json:"compactKeepRecent"`
+	ContextWindow      int     `json:"contextWindow"`
 }

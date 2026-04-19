@@ -52,6 +52,11 @@ func (a *Agent) History() []api.Message {
 	return out
 }
 
+// GetClient returns the current API client.
+func (a *Agent) GetClient() api.Streamer {
+	return a.client
+}
+
 // Query appends the user message to history, runs the agent loop, and streams
 // events to the returned channel.
 func (a *Agent) Query(ctx context.Context, userText string) <-chan StreamEvent {
@@ -115,6 +120,13 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 				a.history = a.history[:len(a.history)-1]
 				ch <- StreamEvent{Type: EventError, Error: ev.Error}
 				return
+
+			default:
+				// Handle usage events (non-blocking, just forward)
+				if ev.Usage != nil {
+					// Usage is accumulated at TUI layer
+					ch <- StreamEvent{Usage: ev.Usage}
+				}
 			}
 		}
 
