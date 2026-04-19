@@ -208,8 +208,6 @@ type openAIChunk struct {
 }
 
 func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
-	defer close(ch)
-
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
