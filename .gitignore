@@ -18,3 +18,4 @@ dist/
 # Secrets
 .env
 .env.*
+.comate/

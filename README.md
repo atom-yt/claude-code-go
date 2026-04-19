@@ -6,14 +6,15 @@ A Go implementation of [Claude Code](https://claude.ai/code) — an AI-powered t
 
 - **Multi-turn conversation** with Claude via the Anthropic API (streaming SSE)
 - **Agent tool loop** — Claude can read/write/edit files, run shell commands, search code
-- **Built-in tools**: Read, Write, Edit, Bash, Glob, Grep
+- **Built-in tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch
 - **MCP support** — connect external tools via Model Context Protocol servers
 - **Permission system** — configurable allow/deny/ask rules per tool and path
 - **Hooks** — shell or HTTP hooks on session_start, pre/post tool calls, stop
 - **Session persistence** — conversations saved to `~/.claude/sessions/`; resume with `claude resume`
-- **Slash commands**: `/help`, `/clear`, `/model`, `/cost`, `/compact`
+- **Slash commands**: `/help`, `/clear`, `/model [provider/model]`, `/cost`, `/compact`
 - **Rich TUI** — scrollable history, Markdown rendering, syntax highlighting, mouse support
 - **Config file** — project-local `.claude/settings.json` or `~/.claude/settings.json`
+- **Automatic retry** — exponential backoff with Retry-After support for 429/5xx errors
 
 ## Installation
 
@@ -123,6 +124,7 @@ Claude Code reads settings from (in priority order):
 | `Bash` | Execute a shell command (30s default timeout) |
 | `Glob` | Find files matching a glob pattern (supports `**`) |
 | `Grep` | Search file contents with regexp (with context lines) |
+| `WebSearch` | Search the web via DuckDuckGo (no API key needed) |
 
 ## Keyboard Shortcuts
 
@@ -143,12 +145,34 @@ In addition to Anthropic, any OpenAI-compatible or Anthropic-compatible provider
 | Provider | `--provider` | Protocol | Default model |
 |----------|-------------|----------|---------------|
 | Anthropic | `anthropic` (default) | Anthropic | claude-sonnet-4-6 |
+| Codex | `codex` | OpenAI | (user-specified) |
 | Kimi (Moonshot) | `kimi` | OpenAI | moonshot-v1-8k |
 | OpenAI | `openai` | OpenAI | gpt-4o |
 | DeepSeek | `deepseek` | OpenAI | deepseek-chat |
 | 通义千问 | `qwen` | OpenAI | qwen-plus |
 | 字节 Ark (OpenAI) | `ark` | OpenAI | ark-code-latest |
 | 字节 Ark (Anthropic) | `ark-anthropic` | Anthropic | ark-code-latest |
+
+**Codex 示例：**
+
+```bash
+# Via environment variables
+export CODEX_BASE_URL="https://coder.api.visioncoder.cn/v1"
+export CODEX_API_KEY="your-codex-api-key"
+claude --provider codex --model your-model
+
+# Via CLI flags
+claude --provider codex --api-key "your-key" --base-url "https://coder.api.visioncoder.cn/v1" --model your-model
+```
+
+**Runtime model switching:**
+
+```
+/model codex/o3          # Switch to codex provider with o3 model
+/model deepseek/deepseek-chat  # Switch to deepseek
+/model gpt-4o            # Switch model only (keep current provider)
+/model                   # Show current provider/model
+```
 
 **字节 Ark 示例：**
 

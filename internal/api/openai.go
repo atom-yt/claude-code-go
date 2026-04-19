@@ -167,29 +167,24 @@ func (c *OpenAIClient) stream(ctx context.Context, req MessagesRequest, ch chan<
 		return
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.BaseURL+"/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		ch <- APIEvent{Type: EventError, Error: fmt.Errorf("build request: %w", err)}
-		return
+	buildReq := func() (*http.Request, error) {
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			c.BaseURL+"/chat/completions", bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Accept", "text/event-stream")
+		return httpReq, nil
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "text/event-stream")
-
-	resp, err := c.HTTPClient.Do(httpReq)
+	resp, err := doWithRetry(ctx, c.HTTPClient, buildReq, DefaultRetryConfig)
 	if err != nil {
-		ch <- APIEvent{Type: EventError, Error: fmt.Errorf("http request: %w", err)}
+		ch <- APIEvent{Type: EventError, Error: err}
 		return
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		ch <- APIEvent{Type: EventError, Error: fmt.Errorf("API error %d: %s", resp.StatusCode, string(b))}
-		return
-	}
 
 	parseOpenAISSE(ctx, resp.Body, ch)
 }

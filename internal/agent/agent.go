@@ -36,6 +36,9 @@ func New(client api.Streamer, model string, registry *tools.Registry, checker *p
 // SetModel changes the model used for subsequent queries.
 func (a *Agent) SetModel(model string) { a.model = model }
 
+// SetClient replaces the API client (used when switching providers at runtime).
+func (a *Agent) SetClient(client api.Streamer) { a.client = client }
+
 // SetHistory replaces the conversation history (used when resuming a session).
 func (a *Agent) SetHistory(msgs []api.Message) {
 	a.history = make([]api.Message, len(msgs))

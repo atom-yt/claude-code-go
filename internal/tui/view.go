@@ -7,7 +7,28 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const inputPrefix = "> "
+	const inputPrefix = "> "
+
+// renderLogo renders the ATOM logo header.
+func (m Model) renderLogo() string {
+	// ATOM logo - ASCII art with fixed column width (6 chars each)
+	logoLines := []string{
+		"  A    T    O    M",
+		" / \\   |   | |  | |",
+		" \\_/  /|\\  |_|  |_|",
+	}
+
+	var styledLines []string
+	for _, line := range logoLines {
+		styledLines = append(styledLines, m.styles.logo.Render(line))
+	}
+
+	// Add a tagline below the logo, centered under ATOM
+	tagline := m.styles.tagline.Render("    ATOM AI 助手")
+	styledLines = append(styledLines, tagline, "")
+
+	return strings.Join(styledLines, "\n")
+}
 
 // View implements tea.Model.
 func (m Model) View() string {
@@ -15,6 +36,7 @@ func (m Model) View() string {
 		return ""
 	}
 
+	logo := m.renderLogo()
 	histH := m.historyHeight()
 	history, maxScroll := m.renderHistory(histH)
 	_ = maxScroll
@@ -23,7 +45,7 @@ func (m Model) View() string {
 	input := m.renderInput()
 	status := m.renderStatusBar()
 
-	return strings.Join([]string{history, divider, input, status}, "\n")
+	return strings.Join([]string{logo, history, divider, input, status}, "\n")
 }
 
 // renderHistory renders the message log, applying scrollOffset from the bottom.
@@ -101,7 +123,8 @@ func (m Model) renderMessage(idx int) []string {
 		lines = append(lines, m.styles.assistantLabel.Render("Atom:"))
 		content := msg.Content
 		if content == "" && msg.Streaming {
-			lines = append(lines, "  "+m.styles.toolText.Render("▋"))
+			frame := spinnerFrames[m.spinnerIdx%len(spinnerFrames)]
+			lines = append(lines, "  "+m.styles.toolText.Render(frame))
 		} else {
 			rendered := m.renderMarkdown(msg, m.width-4)
 			for _, l := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
@@ -122,7 +145,8 @@ func (m Model) renderMessage(idx int) []string {
 	case RoleToolProgress:
 		icon := "  >"
 		if msg.Streaming {
-			icon = "  ●"
+			frame := spinnerFrames[m.spinnerIdx%len(spinnerFrames)]
+			icon = "  " + frame
 		}
 		lines = append(lines, m.styles.toolLabel.Render(icon)+" "+m.styles.toolText.Render(msg.Content))
 
@@ -142,7 +166,17 @@ func (m Model) renderMessage(idx int) []string {
 
 // renderMarkdown renders assistant content through glamour for Markdown formatting.
 // Falls back to plain word-wrapped text on error.
+// If content starts with "<!-- raw -->", it's rendered as plain text without markdown processing.
 func (m Model) renderMarkdown(msg *ChatMessage, width int) string {
+	// Check for raw text marker
+	const rawMarker = "<!-- raw -->"
+	if strings.HasPrefix(msg.Content, rawMarker) {
+		content := strings.TrimPrefix(msg.Content, rawMarker)
+		// Trim leading newline if present
+		content = strings.TrimLeft(content, "\n")
+		return content
+	}
+
 	// Use per-message render cache when not streaming.
 	if !msg.Streaming && msg.rendered != "" {
 		return msg.rendered
@@ -214,7 +248,13 @@ func (m Model) renderStatusBar() string {
 	if m.totalOutputTokens > 0 {
 		parts = append(parts, fmt.Sprintf("tokens:%d↑%d↓", m.totalInputTokens, m.totalOutputTokens))
 	}
-	parts = append(parts, string(m.status))
+
+	statusText := string(m.status)
+	if m.status == StatusThinking {
+		frame := spinnerFrames[m.spinnerIdx%len(spinnerFrames)]
+		statusText = frame + " " + statusText
+	}
+	parts = append(parts, statusText)
 
 	content := " " + strings.Join(parts, "  │  ") + " "
 	padding := m.width - lipgloss.Width(content)

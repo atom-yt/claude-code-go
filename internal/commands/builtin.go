@@ -14,6 +14,7 @@ func All() []Command {
 		&modelCmd{},
 		&costCmd{},
 		&compactCmd{},
+		&buddyCmd{},
 	}
 }
 
@@ -86,21 +87,50 @@ type modelCmd struct{}
 
 func (c *modelCmd) Name() string        { return "model" }
 func (c *modelCmd) Aliases() []string   { return nil }
-func (c *modelCmd) Description() string { return "Show or switch model: /model [name]" }
+func (c *modelCmd) Description() string { return "Show or switch model: /model [provider/model] or /model [model]" }
 
 func (c *modelCmd) Execute(_ context.Context, args []string, ctx *Context) (string, error) {
 	if len(args) == 0 {
 		model := ""
+		provider := ""
 		if ctx.GetModel != nil {
 			model = ctx.GetModel()
 		}
-		return fmt.Sprintf("Current model: %s", model), nil
+		if ctx.GetProvider != nil {
+			provider = ctx.GetProvider()
+		}
+		if provider == "" {
+			provider = "anthropic"
+		}
+		return fmt.Sprintf("Current model: %s/%s", provider, model), nil
 	}
-	newModel := strings.Join(args, " ")
+
+	input := strings.Join(args, " ")
+
+	// Parse provider/model format.
+	var newProvider, newModel string
+	if idx := strings.Index(input, "/"); idx > 0 {
+		newProvider = input[:idx]
+		newModel = input[idx+1:]
+	} else {
+		newModel = input
+	}
+
+	if newProvider != "" && ctx.SetProvider != nil {
+		ctx.SetProvider(newProvider)
+	}
 	if ctx.SetModel != nil {
 		ctx.SetModel(newModel)
 	}
-	return fmt.Sprintf("Switched to model: %s", newModel), nil
+
+	provider := ""
+	if ctx.GetProvider != nil {
+		provider = ctx.GetProvider()
+	}
+	if provider == "" {
+		provider = "anthropic"
+	}
+	return fmt.Sprintf("Switched to model: %s/%s", provider, ctx.GetModel()), nil
 }
 
 // ---- /cost ----
@@ -136,4 +166,72 @@ func (c *compactCmd) Execute(ctx context.Context, _ []string, cmdCtx *Context) (
 		return "", fmt.Errorf("compact failed: %w", err)
 	}
 	return "History compacted.", nil
+}
+
+// ---- /buddy ----
+
+type buddyCmd struct{}
+
+func (c *buddyCmd) Name() string        { return "buddy" }
+func (c *buddyCmd) Aliases() []string   { return []string{"pet"} }
+func (c *buddyCmd) Description() string { return "Show your AI buddy! Try /buddy [happy|sad|thinking|sleeping|eating|play]" }
+
+func (c *buddyCmd) Execute(_ context.Context, args []string, _ *Context) (string, error) {
+	mood := "happy"
+	if len(args) > 0 {
+		mood = args[0]
+	}
+
+	// Buddy art collection - use raw text prefix to skip markdown rendering
+	buddies := map[string]string{
+		"happy": "<!-- raw -->\n" + `      /\__      *  *  *
+     (   @\___        /
+    /        O      /
+   /   (_____/
+  /_____/   U
+
+Your buddy is happy! 🐕`,
+		"sad": "<!-- raw -->\n" + `      /\__
+     (   @\___
+    /        O
+   /   (_____/  | |
+  /_____/   |   |
+
+Your buddy is sad... give them a pat! 🐕`,
+		"thinking": "<!-- raw -->\n" + `      /\__
+     (   @\___
+    /        ?
+   /   (_____)
+  /_____/   |
+
+Your buddy is thinking... 🤔`,
+		"sleeping": "<!-- raw -->\n" + `      /\__
+     (   @\___
+    /        Z
+   /   (_____) z
+  /_____/   ZZZ
+
+Your buddy is sleeping... 💤`,
+		"eating": "<!-- raw -->\n" + `      /\__
+     (   @\___
+    /       ( )
+   /   (_____)/
+  /_____/   |
+
+Your buddy is eating a treat! 🦴`,
+		"play": "<!-- raw -->\n" + `      /\__
+     (   @\___
+    /        !
+   /   (_____)/
+  /_____/   |
+
+Your buddy wants to play! 🎾`,
+	}
+
+	art, ok := buddies[mood]
+	if !ok {
+		art = buddies["happy"]
+	}
+
+	return art, nil
 }

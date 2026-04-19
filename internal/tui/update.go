@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -11,6 +12,12 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/commands"
 	"github.com/atom-yt/claude-code-go/internal/session"
 )
+
+// spinnerFrames are the animation frames for the waiting spinner.
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// spinnerTickMsg triggers a spinner frame advance.
+type spinnerTickMsg struct{}
 
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
@@ -28,6 +35,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		return m.handleMouse(msg)
+
+	case spinnerTickMsg:
+		if m.status == StatusThinking {
+			m.spinnerIdx = (m.spinnerIdx + 1) % len(spinnerFrames)
+			return m, spinnerTick()
+		}
+		return m, nil
 
 	case streamEventMsg:
 		return m.handleStreamEvent(msg.event)
@@ -102,7 +116,25 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyRunes:
-		m.input += msg.String()
+		s := msg.String()
+		// Filter out terminal control sequences and non-printable characters.
+		// Also filter out OSC sequences like ]11;rgb:... and ANSI escape sequences
+		if s != "" && !strings.ContainsAny(s, "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x0e\x0f\x1b\x7f") {
+			// Filter out OSC sequences (] followed by digits and ;)
+			if strings.Contains(s, "]\x1b") || strings.Contains(s, "]11;") || strings.Contains(s, "rgb:") {
+				return m, nil
+			}
+			clean := true
+			for _, r := range s {
+				if r < 32 && r != '\t' {
+					clean = false
+					break
+				}
+			}
+			if clean {
+				m.input += s
+			}
+		}
 		return m, nil
 	}
 
@@ -158,9 +190,10 @@ func (m Model) handleSubmit() (tea.Model, tea.Cmd) {
 
 	m.messages = append(m.messages, ChatMessage{Role: RoleAssistant, Content: "", Streaming: true})
 	m.status = StatusThinking
+	m.spinnerIdx = 0
 
 	eventCh := m.ag.Query(context.Background(), text)
-	return m, waitForEvent(eventCh)
+	return m, tea.Batch(waitForEvent(eventCh), spinnerTick())
 }
 
 // handleSlashCommand parses and executes a "/" prefixed command.
@@ -207,6 +240,15 @@ func (m *Model) buildCommandContext() *commands.Context {
 			m.cfg.Model = model
 			if m.ag != nil {
 				m.ag.SetModel(model)
+			}
+		},
+		GetProvider: func() string { return m.cfg.Provider },
+		SetProvider: func(provider string) {
+			m.cfg.Provider = provider
+			// Rebuild the API client with the new provider.
+			client := buildClient(m.cfg)
+			if m.ag != nil {
+				m.ag.SetClient(client)
 			}
 		},
 		GetCost: func() (int, int) {
@@ -406,4 +448,11 @@ func trimSpace(s string) string {
 
 func isSpace(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
+}
+
+// spinnerTick returns a tea.Cmd that fires a spinnerTickMsg after a short delay.
+func spinnerTick() tea.Cmd {
+	return tea.Tick(80*time.Millisecond, func(_ time.Time) tea.Msg {
+		return spinnerTickMsg{}
+	})
 }

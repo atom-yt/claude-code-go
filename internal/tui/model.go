@@ -23,6 +23,7 @@ import (
 	toolglob "github.com/atom-yt/claude-code-go/internal/tools/glob"
 	toolgrep "github.com/atom-yt/claude-code-go/internal/tools/grep"
 	toolread "github.com/atom-yt/claude-code-go/internal/tools/read"
+	toolwebsearch "github.com/atom-yt/claude-code-go/internal/tools/websearch"
 	toolwrite "github.com/atom-yt/claude-code-go/internal/tools/write"
 )
 
@@ -103,6 +104,9 @@ type Model struct {
 
 	// Session persistence.
 	sessionID string
+
+	// Spinner animation frame index.
+	spinnerIdx int
 }
 
 type styles struct {
@@ -120,21 +124,21 @@ type styles struct {
 	statusBar      lipgloss.Style
 	divider        lipgloss.Style
 	scrollHint     lipgloss.Style
+	logo           lipgloss.Style
+	tagline        lipgloss.Style
 }
 
 // NewModel creates an initialised TUI model.
 func NewModel(cliCfg Config, initialPrompt string) Model {
 	settings := config.Load(config.CLIFlags{
-		Model:   cliCfg.Model,
-		APIKey:  cliCfg.APIKey,
-		BaseURL: cliCfg.BaseURL,
-		Verbose: cliCfg.Verbose,
+		Model:    cliCfg.Model,
+		APIKey:   cliCfg.APIKey,
+		Provider: cliCfg.Provider,
+		BaseURL:  cliCfg.BaseURL,
+		Verbose:  cliCfg.Verbose,
 	})
 	if settings.APIKey == "" {
 		settings.APIKey = os.Getenv("ANTHROPIC_API_KEY")
-	}
-	if settings.Provider == "" && cliCfg.Provider != "" {
-		settings.Provider = cliCfg.Provider
 	}
 
 	m := Model{
@@ -216,7 +220,8 @@ func NewModelWithHistory(cliCfg Config, rec session.Record) Model {
 
 // historyHeight returns the pixel-line height of the history area.
 func (m Model) historyHeight() int {
-	reserved := 1 + 1 + 1 + 1 // divider + input + statusbar + blank
+	// Logo: 4 lines + 1 blank line = 5 lines
+	reserved := 5 + 1 + 1 + 1 // logo + divider + input + statusbar
 	h := m.height - reserved
 	if h < 1 {
 		h = 1
@@ -250,6 +255,7 @@ var knownProviders = map[string]providerInfo{
 	"moonshot":     {"https://api.moonshot.cn/v1", "openai"},
 	"deepseek":     {"https://api.deepseek.com/v1", "openai"},
 	"qwen":         {"https://dashscope.aliyuncs.com/compatible-mode/v1", "openai"},
+	"codex":        {"https://coder.api.visioncoder.cn/v1", "openai"},
 	// ByteDance Ark — OpenAI-compatible: /v3/chat/completions (no extra /v1)
 	"ark":          {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
 	"ark-openai":   {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
@@ -303,6 +309,7 @@ func buildRegistry() *tools.Registry {
 	r.Register(&toolbash.Tool{})
 	r.Register(&toolglob.Tool{})
 	r.Register(&toolgrep.Tool{})
+	r.Register(&toolwebsearch.Tool{})
 	return r
 }
 
@@ -442,5 +449,7 @@ func buildStyles() styles {
 			PaddingLeft(1).PaddingRight(1),
 		divider:    lipgloss.NewStyle().Foreground(lipgloss.Color("238")),
 		scrollHint: lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		logo:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("81")),
+		tagline:    lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 	}
 }

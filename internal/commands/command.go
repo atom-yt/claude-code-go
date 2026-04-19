@@ -15,6 +15,10 @@ type Context struct {
 	GetModel func() string
 	// SetModel switches the model.
 	SetModel func(model string)
+	// GetProvider returns the current provider name.
+	GetProvider func() string
+	// SetProvider switches the provider and rebuilds the API client.
+	SetProvider func(provider string)
 	// GetCost returns cumulative token counts.
 	GetCost func() (inputTokens, outputTokens int)
 	// CompactHistory triggers history compaction.

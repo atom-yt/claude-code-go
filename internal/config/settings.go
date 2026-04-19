@@ -4,16 +4,18 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const defaultModel = "claude-sonnet-4-6"
 
 // CLIFlags carries values supplied on the command line.
 type CLIFlags struct {
-	Model   string
-	APIKey  string
-	BaseURL string
-	Verbose bool
+	Model    string
+	APIKey   string
+	Provider string
+	BaseURL  string
+	Verbose  bool
 }
 
 // Load resolves configuration from (highest to lowest priority):
@@ -28,9 +30,26 @@ func Load(flags CLIFlags) Settings {
 
 	// Merge: project overrides user for shared fields.
 	model := firstNonEmpty(flags.Model, os.Getenv("CLAUDE_MODEL"), project.Model, user.Model, defaultModel)
-	apiKey := firstNonEmpty(flags.APIKey, os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("OPENAI_API_KEY"), project.APIKey, user.APIKey)
-	provider := firstNonEmpty(os.Getenv("CLAUDE_PROVIDER"), project.Provider, user.Provider)
-	baseURL := firstNonEmpty(flags.BaseURL, os.Getenv("CLAUDE_BASE_URL"), project.BaseURL, user.BaseURL)
+	provider := firstNonEmpty(flags.Provider, os.Getenv("CLAUDE_PROVIDER"), project.Provider, user.Provider)
+
+	// Provider-specific API key resolution.
+	// ANTHROPIC_API_KEY is only used for anthropic/ark-anthropic providers.
+	// Other providers use OPENAI_API_KEY or their own env var.
+	var apiKey string
+	switch strings.ToLower(provider) {
+	case "", "anthropic", "ark-anthropic":
+		apiKey = firstNonEmpty(flags.APIKey,
+			os.Getenv("ANTHROPIC_API_KEY"),
+			project.APIKey, user.APIKey)
+	default:
+		apiKey = firstNonEmpty(flags.APIKey,
+			providerEnvKey(provider),
+			os.Getenv("OPENAI_API_KEY"),
+			project.APIKey, user.APIKey)
+	}
+	baseURL := firstNonEmpty(flags.BaseURL,
+		providerEnvURL(provider),
+		os.Getenv("CLAUDE_BASE_URL"), project.BaseURL, user.BaseURL)
 
 	// Inject env vars from settings file.
 	for k, v := range user.Env {
@@ -150,6 +169,24 @@ func firstNonEmpty(vals ...string) string {
 		if v != "" {
 			return v
 		}
+	}
+	return ""
+}
+
+// providerEnvKey returns the provider-specific API key from env vars.
+func providerEnvKey(provider string) string {
+	switch strings.ToLower(provider) {
+	case "codex":
+		return os.Getenv("CODEX_API_KEY")
+	}
+	return ""
+}
+
+// providerEnvURL returns the provider-specific base URL from env vars.
+func providerEnvURL(provider string) string {
+	switch strings.ToLower(provider) {
+	case "codex":
+		return os.Getenv("CODEX_BASE_URL")
 	}
 	return ""
 }
