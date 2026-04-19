@@ -23,6 +23,7 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/tools"
 	toolask "github.com/atom-yt/claude-code-go/internal/tools/ask"
 	toolbash "github.com/atom-yt/claude-code-go/internal/tools/bash"
+	toolbrief "github.com/atom-yt/claude-code-go/internal/tools/brief"
 	tooledit "github.com/atom-yt/claude-code-go/internal/tools/edit"
 	toolglob "github.com/atom-yt/claude-code-go/internal/tools/glob"
 	toolgrep "github.com/atom-yt/claude-code-go/internal/tools/grep"
@@ -364,22 +365,38 @@ var knownProviders = map[string]providerInfo{
 
 // modelContextWindows maps model names to their context window sizes (in tokens).
 var modelContextWindows = map[string]int{
+	// Claude models
 	"claude-sonnet-4-6": 200000,
+	"claude-opus-4-6":   200000,
 	"claude-3-opus":     200000,
 	"claude-3-sonnet":   200000,
 	"claude-3-haiku":    200000,
 	"claude-3.5-sonnet": 200000,
 	"claude-3.5-haiku":  200000,
-	"gpt-4o":            128000,
-	"gpt-4-turbo":       128000,
-	"gpt-4":             8192,
-	"gpt-3.5-turbo":     16385,
-	"deepseek-chat":     128000,
-	"deepseek-coder":    128000,
+	// OpenAI GPT models
+	"gpt-4o":        128000,
+	"gpt-4o-mini":   128000,
+	"gpt-4-turbo":   128000,
+	"gpt-4":         8192,
+	"gpt-3.5-turbo": 16385,
+	"o1":            200000,
+	"o1-mini":       128000,
+	"o1-preview":    128000,
+	"o3":            200000,
+	"o3-mini":       200000,
+	// DeepSeek models
+	"deepseek-chat":  128000,
+	"deepseek-coder": 128000,
+	// Qwen models
+	"qwen":    128000,
+	"qwen2":   128000,
+	"qwen-max": 32768,
+	// Kimi models
+	"moonshot-v1": 128000,
 }
 
 // getContextWindow returns the context window size for a given model.
-// Returns defaultMaxTokens (8096) for unknown models.
+// Returns 128000 for unknown models (safe default for most modern LLMs).
 func getContextWindow(model string) int {
 	// First check if model matches a known prefix
 	for knownModel, window := range modelContextWindows {
@@ -387,8 +404,8 @@ func getContextWindow(model string) int {
 			return window
 		}
 	}
-	// Fallback to default
-	return 8096
+	// Fallback to 128000 (safe default for most modern LLMs)
+	return 128000
 }
 
 // buildClient creates the right API client based on provider/baseURL settings.
@@ -449,6 +466,7 @@ func buildRegistry() *tools.Registry {
 	r.Register(&tasktool.TaskDeleteTool{})
 	r.Register(&tasktool.TaskOutputTool{})
 	r.Register(&toolask.Tool{})
+	r.Register(&toolbrief.Tool{})
 	return r
 }
 
