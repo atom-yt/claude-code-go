@@ -40,3 +40,10 @@
 
 - 安全性要求请参考 [.claude/rules/safety.md](.claude/rules/safety.md)
 - 配置问题请参考 [.claude/rules/configuration.md](.claude/rules/configuration.md)
+
+## 记忆管理
+
+- 使用 claude-mem 管理跨会话记忆
+- 项目级规则写在本文件
+- 个人偏好通过 claude-mem 自动记录
+- 重要架构决策同时记录在两处

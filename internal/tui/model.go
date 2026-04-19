@@ -669,7 +669,7 @@ func (m *Model) compactHistory(ctx context.Context) error {
 	keepRecent := m.compactKeepRecent
 	if len(m.messages) <= keepRecent {
 		// Not enough messages to compact
-		return nil
+		return fmt.Errorf("not enough messages to compact (need more than %d messages, currently have %d)", keepRecent, len(m.messages))
 	}
 
 	// This is a simplified compact that just keeps recent messages

@@ -51,7 +51,8 @@ type serverInfo struct {
 }
 
 type serverCapabilities struct {
-	Tools *struct{} `json:"tools,omitempty"`
+	Tools     *struct{} `json:"tools,omitempty"`
+	Resources *struct{} `json:"resources,omitempty"`
 }
 
 type toolsListResult struct {
@@ -78,4 +79,32 @@ type toolsCallResult struct {
 type contentBlock struct {
 	Type string `json:"type"`
 	Text string `json:"text,omitempty"`
+}
+
+// Resource-related types
+
+type resourcesListResult struct {
+	Resources []ResourceDef `json:"resources"`
+}
+
+// ResourceDef is one resource exposed by an MCP server.
+type ResourceDef struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
+
+type resourceReadParams struct {
+	URI string `json:"uri"`
+}
+
+type resourceReadResult struct {
+	Contents []resourceContent `json:"contents"`
+}
+
+type resourceContent struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Text     string `json:"text,omitempty"`
 }

@@ -123,6 +123,28 @@ func (c *Client) listTools(ctx context.Context) error {
 	return nil
 }
 
+// ListResources returns all resources exposed by the MCP server.
+func (c *Client) ListResources(ctx context.Context) ([]ResourceDef, error) {
+	var result resourcesListResult
+	if err := c.call(ctx, "resources/list", nil, &result); err != nil {
+		return nil, err
+	}
+	return result.Resources, nil
+}
+
+// ReadResource reads the content of a resource by URI.
+func (c *Client) ReadResource(ctx context.Context, uri string) (string, error) {
+	params := resourceReadParams{URI: uri}
+	var result resourceReadResult
+	if err := c.call(ctx, "resources/read", params, &result); err != nil {
+		return "", err
+	}
+	if len(result.Contents) == 0 {
+		return "", fmt.Errorf("empty resource content")
+	}
+	return result.Contents[0].Text, nil
+}
+
 // call sends a JSON-RPC request and waits for the response.
 func (c *Client) call(ctx context.Context, method string, params any, out any) error {
 	id := int(c.nextID.Add(1))

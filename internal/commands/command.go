@@ -27,6 +27,10 @@ type Context struct {
 	ConsolidateMemory func(ctx context.Context) (string, error)
 	// ConsolidateStatus returns the consolidation status.
 	ConsolidateStatus func(ctx context.Context) (string, error)
+	// GetConfig returns the current configuration.
+	GetConfig func() map[string]any
+	// RestoreSession restores a session by ID and returns the session info.
+	RestoreSession func(id string) (string, error)
 }
 
 // Message is a simplified message for command use.
