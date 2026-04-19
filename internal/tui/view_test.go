@@ -86,3 +86,34 @@ func TestRenderMessage_ToolProgress(t *testing.T) {
 		t.Errorf("expected tool name in output: %s", joined)
 	}
 }
+
+func TestMatchesBracketSequence(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		// Should match: ANSI CSI sequences
+		{"[24;1R", true},
+		{"[A", true},
+		{"[K", true},
+		{"[1;24r", true},
+		{"[?1049l", true},
+		{"[0m", true},
+		{"[38;5;123m", true},
+
+		// Should NOT match: normal input
+		{"hello", false},
+		{"[hello", false},  // needs to end with letter and only contain valid chars
+		{"test", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := matchesBracketSequence(tt.input)
+			if result != tt.expected {
+				t.Errorf("matchesBracketSequence(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

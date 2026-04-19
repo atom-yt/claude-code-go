@@ -159,6 +159,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if strings.Contains(s, "]\x1b") || strings.Contains(s, "]11;") || strings.Contains(s, "rgb:") {
 				return m, nil
 			}
+			// Filter out ANSI CSI sequences (e.g., alt+\[24;1R, \[A, \[24;1R)
+			if strings.HasPrefix(s, "alt+\\[") || strings.Contains(s, "\\[") {
+				return m, nil
+			}
+			// Filter out bracket sequences like [24;1R (device status reports)
+			if matchesBracketSequence(s) {
+				return m, nil
+			}
 			clean := true
 			for _, r := range s {
 				if r < 32 && r != '\t' {
@@ -314,6 +322,26 @@ func (m *Model) buildCommandContext() *commands.Context {
 		},
 		ConsolidateStatus: func(ctx context.Context) (string, error) {
 			return m.consolidateStatus(ctx)
+		},
+		GetConfig: func() map[string]any {
+			return map[string]any{
+				"model":                    m.cfg.Model,
+				"provider":                 m.cfg.Provider,
+				"baseURL":                  m.cfg.BaseURL,
+				"verbose":                  m.cfg.Verbose,
+				"permissions":              m.cfg.Permissions,
+				"hooks":                    m.cfg.Hooks,
+				"mcpServers":               m.cfg.MCPServers,
+				"autoCompact":              m.cfg.AutoCompact,
+				"compactThreshold":         m.cfg.CompactThreshold,
+				"compactCooldown":          m.cfg.CompactCooldown,
+				"compactKeepRecent":        m.cfg.CompactKeepRecent,
+				"contextWindow":            m.cfg.ContextWindow,
+				"autoDreamEnabled":        m.cfg.AutoDreamEnabled,
+				"autoMemoryDirectory":      m.cfg.AutoMemoryDirectory,
+				"minConsolidateHours":     m.cfg.MinConsolidateHours,
+				"minConsolidateSessions":  m.cfg.MinConsolidateSessions,
+			}
 		},
 	}
 }
@@ -587,4 +615,39 @@ func (m *Model) triggerAutoDream(ctx context.Context) {
 
 	// Run consolidation in the background
 	consolidator.RunBackgroundConsolidation(ctx)
+}
+
+// matchesBracketSequence detects ANSI CSI sequences like [24;1R, [A, [K, etc.
+// These are terminal escape sequences that should be filtered out.
+func matchesBracketSequence(s string) bool {
+	// Pattern: [ followed by optional digits and semicolons, ending with a single letter
+	// Examples: [24;1R, [A, [K, [1;24r, [?1049l
+	if len(s) == 0 {
+		return false
+	}
+
+	// Check if it starts with [
+	if s[0] == '[' {
+		// Must have at least 2 characters: [ and a letter
+		if len(s) < 2 {
+			return false
+		}
+
+		// Last character must be a letter
+		lastChar := s[len(s)-1]
+		if !((lastChar >= 'a' && lastChar <= 'z') || (lastChar >= 'A' && lastChar <= 'Z')) {
+			return false
+		}
+
+		// Characters between [ and last letter must be: ?, ;, or digits
+		for i := 1; i < len(s)-1; i++ {
+			c := s[i]
+			if c != '?' && c != ';' && !(c >= '0' && c <= '9') {
+				return false
+			}
+		}
+		return true
+	}
+
+	return false
 }
