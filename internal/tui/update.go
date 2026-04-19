@@ -58,6 +58,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKey routes normal (non-ask) keyboard events.
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// 如果自动补全处于活动状态，首先处理补全特定的按键
+	if m.isAutocompleteActive() {
+		switch msg.Type {
+		case tea.KeyTab:
+			m.cycleAutocomplete()
+			return m, nil
+		case tea.KeyUp:
+			m.selectPrevAutocomplete()
+			return m, nil
+		case tea.KeyDown:
+			m.selectNextAutocomplete()
+			return m, nil
+		case tea.KeyEnter:
+			m.acceptAutocomplete()
+			return m.handleSubmit()
+		case tea.KeyEsc:
+			m.hideAutocomplete()
+			return m, nil
+		case tea.KeyBackspace, tea.KeyDelete:
+			// 在自动补全激活时处理退格键
+			runes := []rune(m.input)
+			if len(runes) > 0 {
+				m.input = string(runes[:len(runes)-1])
+				// 更新自动补全查询
+				if strings.HasPrefix(m.input, "/") {
+					m.updateAutocompleteQuery(m.input)
+				} else {
+					m.hideAutocomplete()
+				}
+			}
+			return m, nil
+		}
+	}
+
 	switch msg.Type {
 	case tea.KeyCtrlC, tea.KeyCtrlD:
 		return m, tea.Quit
@@ -133,6 +167,20 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			if clean {
 				m.input += s
+
+				// 如果用户输入了 /，触发自动补全
+				if strings.HasPrefix(m.input, "/") {
+					// 检查是否在第一行（不包含换行符）
+					if !strings.Contains(strings.TrimLeft(m.input, "/"), "\n") {
+						if m.isAutocompleteActive() {
+							m.updateAutocompleteQuery(m.input)
+						} else {
+							m.showAutocomplete(m.input)
+						}
+					}
+				} else {
+					m.hideAutocomplete()
+				}
 			}
 		}
 		return m, nil
@@ -156,6 +204,9 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 // handleSubmit processes Enter when input is non-empty.
 func (m Model) handleSubmit() (tea.Model, tea.Cmd) {
+	// 关闭自动补全菜单
+	m.hideAutocomplete()
+
 	text := trimSpace(m.input)
 	if text == "" {
 		return m, nil

@@ -15,6 +15,7 @@ func All() []Command {
 		&costCmd{},
 		&compactCmd{},
 		&buddyCmd{},
+		&shortcutsCmd{},
 	}
 }
 
@@ -234,4 +235,46 @@ Your buddy wants to play! 🎾`,
 	}
 
 	return art, nil
+}
+
+// ---- /shortcuts ----
+
+type shortcutsCmd struct{}
+
+func (c *shortcutsCmd) Name() string        { return "shortcuts" }
+func (c *shortcutsCmd) Aliases() []string   { return []string{"keys"} }
+func (c *shortcutsCmd) Description() string { return "Show all keyboard shortcuts" }
+
+func (c *shortcutsCmd) Execute(_ context.Context, _ []string, _ *Context) (string, error) {
+	lines := []string{"Keyboard shortcuts:"}
+
+	shortcuts := []struct {
+		key         string
+		description string
+	}{
+		{"Ctrl+C / Ctrl+D", "Quit"},
+		{"Ctrl+L", "Clear screen"},
+		{"Enter", "Submit input"},
+		{"Ctrl+J", "Insert newline"},
+		{"Backspace/Delete", "Delete character"},
+		{"Up / Down", "Navigate input history"},
+		{"PgUp / PgDn", "Scroll history"},
+		{"Mouse wheel", "Scroll history"},
+		{"Tab (when typing /)", "Cycle through command suggestions"},
+		{"Esc", "Dismiss autocomplete menu"},
+	}
+
+	maxKeyLen := 20
+	for _, s := range shortcuts {
+		if len(s.key) > maxKeyLen {
+			maxKeyLen = len(s.key)
+		}
+	}
+
+	for _, s := range shortcuts {
+		padding := strings.Repeat(" ", maxKeyLen-len(s.key))
+		lines = append(lines, fmt.Sprintf("  %s%s  —  %s", s.key, padding, s.description))
+	}
+
+	return strings.Join(lines, "\n"), nil
 }

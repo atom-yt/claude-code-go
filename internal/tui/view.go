@@ -43,9 +43,16 @@ func (m Model) View() string {
 
 	divider := m.styles.divider.Render(strings.Repeat("─", m.width))
 	input := m.renderInput()
+	autocomplete := m.renderAutocomplete()
 	status := m.renderStatusBar()
 
-	return strings.Join([]string{logo, history, divider, input, status}, "\n")
+	parts := []string{logo, history, divider, input}
+	if autocomplete != "" {
+		parts = append(parts, autocomplete)
+	}
+	parts = append(parts, status)
+
+	return strings.Join(parts, "\n")
 }
 
 // renderHistory renders the message log, applying scrollOffset from the bottom.
@@ -293,4 +300,42 @@ func wordWrap(text string, width int) []string {
 		}
 	}
 	return lines
+}
+
+// renderAutocomplete 渲染命令建议下拉菜单
+func (m Model) renderAutocomplete() string {
+	if !m.isAutocompleteActive() || len(m.autocomplete.suggestions) == 0 {
+		return ""
+	}
+
+	var lines []string
+	header := m.styles.autocompleteHeader.Render("  Suggestions (Tab to cycle, Enter to accept, Esc to dismiss)")
+	lines = append(lines, header)
+
+	for i, suggestion := range m.autocomplete.suggestions {
+		cmd, ok := m.cmdRegistry.Get(suggestion)
+		description := ""
+		if ok {
+			description = cmd.Description()
+		}
+
+		isSelected := i == m.autocomplete.selectedIndex
+		prefix := "  "
+		if isSelected {
+			prefix = "> "
+		}
+
+		cmdText := "/" + suggestion
+		line := prefix + cmdText + "  " + description
+
+		if isSelected {
+			line = m.styles.autocompleteSelected.Render(line)
+		} else {
+			line = m.styles.autocompleteItem.Render(line)
+		}
+
+		lines = append(lines, line)
+	}
+
+	return strings.Join(lines, "\n")
 }

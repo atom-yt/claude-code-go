@@ -107,6 +107,9 @@ type Model struct {
 
 	// Spinner animation frame index.
 	spinnerIdx int
+
+	// Autocomplete state.
+	autocomplete *AutocompleteState
 }
 
 type styles struct {
@@ -126,6 +129,9 @@ type styles struct {
 	scrollHint     lipgloss.Style
 	logo           lipgloss.Style
 	tagline        lipgloss.Style
+	autocompleteHeader   lipgloss.Style
+	autocompleteItem     lipgloss.Style
+	autocompleteSelected lipgloss.Style
 }
 
 // NewModel creates an initialised TUI model.
@@ -451,5 +457,8 @@ func buildStyles() styles {
 		scrollHint: lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
 		logo:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("81")),
 		tagline:    lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
+		autocompleteHeader:   lipgloss.NewStyle().Background(lipgloss.Color("236")).Foreground(lipgloss.Color("244")).Bold(true),
+		autocompleteItem:     lipgloss.NewStyle().Foreground(lipgloss.Color("251")),
+		autocompleteSelected: lipgloss.NewStyle().Background(lipgloss.Color("24")).Foreground(lipgloss.Color("231")).Bold(true),
 	}
 }
