@@ -208,6 +208,8 @@ type openAIChunk struct {
 }
 
 func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
+	defer close(ch)
+
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
@@ -219,8 +221,14 @@ func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
 	}
 	pending := map[int]*pendingCall{}
 
+	// Track if we've sent a stop event
+	stopSent := false
+
 	for scanner.Scan() {
 		if ctx.Err() != nil {
+			if !stopSent {
+				ch <- APIEvent{Type: EventError, Error: ctx.Err()}
+			}
 			return
 		}
 		line := scanner.Text()
@@ -229,6 +237,7 @@ func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
 		}
 		data := strings.TrimPrefix(line, "data: ")
 		if data == "[DONE]" {
+			stopSent = true
 			// Flush any accumulated tool calls.
 			for _, p := range pending {
 				var input map[string]any
@@ -294,6 +303,7 @@ func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
 		}
 
 		if chunk.Choices[0].FinishReason != nil {
+			stopSent = true
 			reason := *chunk.Choices[0].FinishReason
 			if reason == "tool_calls" {
 				// Flush tool calls.
@@ -317,5 +327,18 @@ func parseOpenAISSE(ctx context.Context, r io.Reader, ch chan<- APIEvent) {
 			ch <- APIEvent{Type: EventMessageStop, StopReason: reason}
 			return
 		}
+	}
+
+	// Check for scanner errors
+	if err := scanner.Err(); err != nil {
+		if !stopSent {
+			ch <- APIEvent{Type: EventError, Error: fmt.Errorf("SSE scan error: %w", err)}
+		}
+		return
+	}
+
+	// Stream closed normally but without explicit stop event
+	if !stopSent {
+		ch <- APIEvent{Type: EventMessageStop, StopReason: "stream_closed"}
 	}
 }
