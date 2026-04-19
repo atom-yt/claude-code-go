@@ -16,10 +16,10 @@ type mcpTool struct {
 
 var _ tools.Tool = (*mcpTool)(nil)
 
-func (t *mcpTool) Name() string        { return t.name }
-func (t *mcpTool) IsReadOnly() bool     { return false }
+func (t *mcpTool) Name() string            { return t.name }
+func (t *mcpTool) IsReadOnly() bool        { return false }
 func (t *mcpTool) IsConcurrencySafe() bool { return false }
-func (t *mcpTool) Description() string  { return t.def.Description }
+func (t *mcpTool) Description() string     { return t.def.Description }
 
 func (t *mcpTool) InputSchema() map[string]any {
 	if t.def.InputSchema != nil {

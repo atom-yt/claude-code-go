@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-	const inputPrefix = "> "
+const inputPrefix = "> "
 
 // renderLogo renders the ATOM logo header.
 func (m Model) renderLogo() string {

@@ -20,9 +20,9 @@ type Option struct {
 
 // Question represents a question to ask the user.
 type Question struct {
-	Question   string    `json:"question"`
-	Header     string    `json:"header,omitempty"`     // Short label (max 12 chars)
-	Options    []Option  `json:"options,omitempty"`     // Options (if multi-select is false)
+	Question    string   `json:"question"`
+	Header      string   `json:"header,omitempty"`      // Short label (max 12 chars)
+	Options     []Option `json:"options,omitempty"`     // Options (if multi-select is false)
 	MultiSelect bool     `json:"multiSelect,omitempty"` // Allow multiple selections
 }
 
@@ -30,7 +30,7 @@ type Question struct {
 type Answer struct {
 	Question string   `json:"question"`
 	Selected []string `json:"selected"` // Selected option labels
-	Other    string   `json:"other"`     // Custom text (if user selects "Other")
+	Other    string   `json:"other"`    // Custom text (if user selects "Other")
 }
 
 // Tool implements the AskUserQuestion tool.
@@ -41,7 +41,7 @@ type Tool struct {
 
 var _ tools.Tool = (*Tool)(nil)
 
-func (t *Tool) Name() string           { return "AskUserQuestion" }
+func (t *Tool) Name() string            { return "AskUserQuestion" }
 func (t *Tool) IsReadOnly() bool        { return true }
 func (t *Tool) IsConcurrencySafe() bool { return false } // Requires user interaction
 
@@ -57,7 +57,7 @@ func (t *Tool) InputSchema() map[string]any {
 		"type": "object",
 		"properties": map[string]any{
 			"questions": map[string]any{
-				"type": "array",
+				"type":     "array",
 				"minItems": 1,
 				"maxItems": 4,
 				"items": map[string]any{
@@ -73,7 +73,7 @@ func (t *Tool) InputSchema() map[string]any {
 							"description": "Short label displayed as a chip/tag (max 12 chars)",
 						},
 						"options": map[string]any{
-							"type": "array",
+							"type":     "array",
 							"minItems": 2,
 							"maxItems": 4,
 							"items": map[string]any{

@@ -18,6 +18,8 @@ func All() []Command {
 		&shortcutsCmd{},
 		&commitCmd{},
 		&prCmd{},
+		&reviewCmd{},
+		&securityReviewCmd{},
 	}
 }
 
@@ -48,6 +50,15 @@ func (r *Registry) Get(name string) (Command, bool) {
 
 // List returns all registered commands.
 func (r *Registry) List() []Command { return r.list }
+
+// Register adds a command to the registry.
+func (r *Registry) Register(cmd Command) {
+	r.list = append(r.list, cmd)
+	r.index[cmd.Name()] = cmd
+	for _, alias := range cmd.Aliases() {
+		r.index[alias] = cmd
+	}
+}
 
 // ---- /help ----
 
@@ -89,9 +100,11 @@ func (c *clearCmd) Execute(_ context.Context, _ []string, ctx *Context) (string,
 
 type modelCmd struct{}
 
-func (c *modelCmd) Name() string        { return "model" }
-func (c *modelCmd) Aliases() []string   { return nil }
-func (c *modelCmd) Description() string { return "Show or switch model: /model [provider/model] or /model [model]" }
+func (c *modelCmd) Name() string      { return "model" }
+func (c *modelCmd) Aliases() []string { return nil }
+func (c *modelCmd) Description() string {
+	return "Show or switch model: /model [provider/model] or /model [model]"
+}
 
 func (c *modelCmd) Execute(_ context.Context, args []string, ctx *Context) (string, error) {
 	if len(args) == 0 {
@@ -176,9 +189,11 @@ func (c *compactCmd) Execute(ctx context.Context, _ []string, cmdCtx *Context) (
 
 type buddyCmd struct{}
 
-func (c *buddyCmd) Name() string        { return "buddy" }
-func (c *buddyCmd) Aliases() []string   { return []string{"pet"} }
-func (c *buddyCmd) Description() string { return "Show your AI buddy! Try /buddy [happy|sad|thinking|sleeping|eating|play]" }
+func (c *buddyCmd) Name() string      { return "buddy" }
+func (c *buddyCmd) Aliases() []string { return []string{"pet"} }
+func (c *buddyCmd) Description() string {
+	return "Show your AI buddy! Try /buddy [happy|sad|thinking|sleeping|eating|play]"
+}
 
 func (c *buddyCmd) Execute(_ context.Context, args []string, _ *Context) (string, error) {
 	mood := "happy"

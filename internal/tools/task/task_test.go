@@ -161,8 +161,8 @@ func TestTaskUpdateTool(t *testing.T) {
 	task := globalManager.Create("Original", "Desc", "")
 
 	result, err := tool.Call(context.Background(), map[string]any{
-		"taskId": task.ID,
-		"status": "completed",
+		"taskId":  task.ID,
+		"status":  "completed",
 		"subject": "Updated",
 	})
 

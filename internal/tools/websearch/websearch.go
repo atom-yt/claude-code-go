@@ -19,8 +19,8 @@ type Tool struct{}
 
 var _ tools.Tool = (*Tool)(nil)
 
-func (t *Tool) Name() string        { return "WebSearch" }
-func (t *Tool) IsReadOnly() bool     { return true }
+func (t *Tool) Name() string            { return "WebSearch" }
+func (t *Tool) IsReadOnly() bool        { return true }
 func (t *Tool) IsConcurrencySafe() bool { return true }
 
 func (t *Tool) Description() string {

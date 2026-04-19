@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/mcp"
 	"github.com/atom-yt/claude-code-go/internal/permissions"
 	"github.com/atom-yt/claude-code-go/internal/session"
+	"github.com/atom-yt/claude-code-go/internal/skills"
 	"github.com/atom-yt/claude-code-go/internal/tools"
 	toolask "github.com/atom-yt/claude-code-go/internal/tools/ask"
 	toolbash "github.com/atom-yt/claude-code-go/internal/tools/bash"
@@ -87,7 +89,7 @@ type Model struct {
 	styles   styles
 
 	// Cached glamour renderer (invalidated when width changes).
-	mdRenderer    *glamourRenderer
+	mdRenderer *glamourRenderer
 
 	// Scrolling.
 	scrollOffset int
@@ -116,13 +118,16 @@ type Model struct {
 	lastCompactTime time.Time
 
 	// Auto-compact configuration.
-	autoCompactEnabled  bool
-	compactThreshold    float64
-	compactCooldown     time.Duration
-	compactKeepRecent   int
+	autoCompactEnabled bool
+	compactThreshold   float64
+	compactCooldown    time.Duration
+	compactKeepRecent  int
 
 	// Slash commands.
 	cmdRegistry *commands.Registry
+
+	// Skills system.
+	skillRegistry *skills.Registry
 
 	// Session persistence.
 	sessionID string
@@ -135,22 +140,22 @@ type Model struct {
 }
 
 type styles struct {
-	userLabel      lipgloss.Style
-	assistantLabel lipgloss.Style
-	errorLabel     lipgloss.Style
-	toolLabel      lipgloss.Style
-	askLabel       lipgloss.Style
-	messageText    lipgloss.Style
-	errorText      lipgloss.Style
-	askText        lipgloss.Style
-	toolText       lipgloss.Style
-	inputPrefix    lipgloss.Style
-	inputText      lipgloss.Style
-	statusBar      lipgloss.Style
-	divider        lipgloss.Style
-	scrollHint     lipgloss.Style
-	logo           lipgloss.Style
-	tagline        lipgloss.Style
+	userLabel            lipgloss.Style
+	assistantLabel       lipgloss.Style
+	errorLabel           lipgloss.Style
+	toolLabel            lipgloss.Style
+	askLabel             lipgloss.Style
+	messageText          lipgloss.Style
+	errorText            lipgloss.Style
+	askText              lipgloss.Style
+	toolText             lipgloss.Style
+	inputPrefix          lipgloss.Style
+	inputText            lipgloss.Style
+	statusBar            lipgloss.Style
+	divider              lipgloss.Style
+	scrollHint           lipgloss.Style
+	logo                 lipgloss.Style
+	tagline              lipgloss.Style
 	autocompleteHeader   lipgloss.Style
 	autocompleteItem     lipgloss.Style
 	autocompleteSelected lipgloss.Style
@@ -170,15 +175,21 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 	}
 
 	m := Model{
-		cfg:         settings,
-		status:      StatusReady,
-		styles:      buildStyles(),
-		historyIdx:  -1,
-		cmdRegistry: commands.NewRegistry(),
-		sessionID:   session.NewID(),
-		mdRenderer:  &glamourRenderer{},
+		cfg:           settings,
+		status:        StatusReady,
+		styles:        buildStyles(),
+		historyIdx:    -1,
+		cmdRegistry:   commands.NewRegistry(),
+		skillRegistry: scanSkills(),
+		sessionID:     session.NewID(),
+		mdRenderer:    &glamourRenderer{},
 		// Initialize compact config
 		contextWindow: getContextWindow(settings.Model),
+	}
+
+	// Register skill command if skills are available
+	if m.skillRegistry != nil && len(m.skillRegistry.List()) > 0 {
+		m.cmdRegistry.Register(commands.NewSkillCmd(m.skillRegistry))
 	}
 
 	// Load compact configuration
@@ -217,6 +228,11 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 
 		// Connect MCP servers and register their tools.
 		connectMCPServers(context.Background(), settings.MCPServers, registry)
+
+		// Register Skill tool if skills are available.
+		if m.skillRegistry != nil && len(m.skillRegistry.List()) > 0 {
+			registry.Register(skills.NewSkillTool(m.skillRegistry))
+		}
 
 		checker := buildChecker(settings.Permissions, &m)
 		executor := buildExecutor(settings.Hooks)
@@ -313,15 +329,15 @@ type providerInfo struct {
 // BaseURL for OpenAI-compatible providers must include the version prefix (e.g. /v1)
 // because the client appends only /chat/completions.
 var knownProviders = map[string]providerInfo{
-	"openai":       {"https://api.openai.com/v1", "openai"},
-	"kimi":         {"https://api.moonshot.cn/v1", "openai"},
-	"moonshot":     {"https://api.moonshot.cn/v1", "openai"},
-	"deepseek":     {"https://api.deepseek.com/v1", "openai"},
-	"qwen":         {"https://dashscope.aliyuncs.com/compatible-mode/v1", "openai"},
-	"codex":        {"https://coder.api.visioncoder.cn/v1", "openai"},
+	"openai":   {"https://api.openai.com/v1", "openai"},
+	"kimi":     {"https://api.moonshot.cn/v1", "openai"},
+	"moonshot": {"https://api.moonshot.cn/v1", "openai"},
+	"deepseek": {"https://api.deepseek.com/v1", "openai"},
+	"qwen":     {"https://dashscope.aliyuncs.com/compatible-mode/v1", "openai"},
+	"codex":    {"https://coder.api.visioncoder.cn/v1", "openai"},
 	// ByteDance Ark — OpenAI-compatible: /v3/chat/completions (no extra /v1)
-	"ark":          {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
-	"ark-openai":   {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
+	"ark":        {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
+	"ark-openai": {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
 	// ByteDance Ark — Anthropic-compatible: appends /v1/messages
 	"ark-anthropic": {"https://ark.cn-beijing.volces.com/api/coding", "anthropic"},
 }
@@ -329,17 +345,17 @@ var knownProviders = map[string]providerInfo{
 // modelContextWindows maps model names to their context window sizes (in tokens).
 var modelContextWindows = map[string]int{
 	"claude-sonnet-4-6": 200000,
-	"claude-3-opus":      200000,
-	"claude-3-sonnet":    200000,
-	"claude-3-haiku":     200000,
-	"claude-3.5-sonnet":  200000,
-	"claude-3.5-haiku":   200000,
+	"claude-3-opus":     200000,
+	"claude-3-sonnet":   200000,
+	"claude-3-haiku":    200000,
+	"claude-3.5-sonnet": 200000,
+	"claude-3.5-haiku":  200000,
 	"gpt-4o":            128000,
 	"gpt-4-turbo":       128000,
 	"gpt-4":             8192,
 	"gpt-3.5-turbo":     16385,
-	"deepseek-chat":      128000,
-	"deepseek-coder":     128000,
+	"deepseek-chat":     128000,
+	"deepseek-coder":    128000,
 }
 
 // getContextWindow returns the context window size for a given model.
@@ -550,10 +566,10 @@ func buildStyles() styles {
 			Background(lipgloss.Color("236")).
 			Foreground(lipgloss.Color("244")).
 			PaddingLeft(1).PaddingRight(1),
-		divider:    lipgloss.NewStyle().Foreground(lipgloss.Color("238")),
-		scrollHint: lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		logo:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("81")),
-		tagline:    lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
+		divider:              lipgloss.NewStyle().Foreground(lipgloss.Color("238")),
+		scrollHint:           lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		logo:                 lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("81")),
+		tagline:              lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 		autocompleteHeader:   lipgloss.NewStyle().Background(lipgloss.Color("236")).Foreground(lipgloss.Color("244")).Bold(true),
 		autocompleteItem:     lipgloss.NewStyle().Foreground(lipgloss.Color("251")),
 		autocompleteSelected: lipgloss.NewStyle().Background(lipgloss.Color("24")).Foreground(lipgloss.Color("231")).Bold(true),
@@ -645,4 +661,29 @@ func (m *Model) compactHistory(ctx context.Context) error {
 	m.lastCompactTime = time.Now()
 
 	return nil
+}
+
+// scanSkills scans the default directories for skills and returns a registry.
+func scanSkills() *skills.Registry {
+	registry := skills.NewRegistry()
+
+	// Add global skills directory
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		globalSkillsDir := filepath.Join(homeDir, ".claude", "skills")
+		if _, err := os.Stat(globalSkillsDir); err == nil {
+			registry.AddDir(globalSkillsDir)
+		}
+	}
+
+	// Add project skills directory
+	projectSkillsDir := filepath.Join(".", ".claude", "skills")
+	if _, err := os.Stat(projectSkillsDir); err == nil {
+		registry.AddDir(projectSkillsDir)
+	}
+
+	// Scan all directories
+	_ = registry.Scan()
+
+	return registry
 }

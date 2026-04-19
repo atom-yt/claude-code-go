@@ -15,7 +15,7 @@ type TaskCreateTool struct{}
 
 var _ tools.Tool = (*TaskCreateTool)(nil)
 
-func (t *TaskCreateTool) Name() string           { return "TaskCreate" }
+func (t *TaskCreateTool) Name() string            { return "TaskCreate" }
 func (t *TaskCreateTool) IsReadOnly() bool        { return false }
 func (t *TaskCreateTool) IsConcurrencySafe() bool { return false }
 
@@ -98,7 +98,7 @@ type TaskGetTool struct{}
 
 var _ tools.Tool = (*TaskGetTool)(nil)
 
-func (t *TaskGetTool) Name() string           { return "TaskGet" }
+func (t *TaskGetTool) Name() string            { return "TaskGet" }
 func (t *TaskGetTool) IsReadOnly() bool        { return true }
 func (t *TaskGetTool) IsConcurrencySafe() bool { return true }
 
@@ -138,7 +138,7 @@ type TaskListTool struct{}
 
 var _ tools.Tool = (*TaskListTool)(nil)
 
-func (t *TaskListTool) Name() string           { return "TaskList" }
+func (t *TaskListTool) Name() string            { return "TaskList" }
 func (t *TaskListTool) IsReadOnly() bool        { return true }
 func (t *TaskListTool) IsConcurrencySafe() bool { return true }
 
@@ -163,7 +163,7 @@ type TaskUpdateTool struct{}
 
 var _ tools.Tool = (*TaskUpdateTool)(nil)
 
-func (t *TaskUpdateTool) Name() string           { return "TaskUpdate" }
+func (t *TaskUpdateTool) Name() string            { return "TaskUpdate" }
 func (t *TaskUpdateTool) IsReadOnly() bool        { return false }
 func (t *TaskUpdateTool) IsConcurrencySafe() bool { return false }
 
@@ -273,7 +273,7 @@ type TaskDeleteTool struct{}
 
 var _ tools.Tool = (*TaskDeleteTool)(nil)
 
-func (t *TaskDeleteTool) Name() string           { return "TaskDelete" }
+func (t *TaskDeleteTool) Name() string            { return "TaskDelete" }
 func (t *TaskDeleteTool) IsReadOnly() bool        { return false }
 func (t *TaskDeleteTool) IsConcurrencySafe() bool { return false }
 
@@ -314,7 +314,7 @@ type TaskOutputTool struct{}
 
 var _ tools.Tool = (*TaskOutputTool)(nil)
 
-func (t *TaskOutputTool) Name() string           { return "TaskOutput" }
+func (t *TaskOutputTool) Name() string            { return "TaskOutput" }
 func (t *TaskOutputTool) IsReadOnly() bool        { return true }
 func (t *TaskOutputTool) IsConcurrencySafe() bool { return true }
 

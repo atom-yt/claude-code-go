@@ -16,7 +16,7 @@ type EnterPlanModeTool struct{}
 
 var _ tools.Tool = (*EnterPlanModeTool)(nil)
 
-func (t *EnterPlanModeTool) Name() string           { return "EnterPlanMode" }
+func (t *EnterPlanModeTool) Name() string            { return "EnterPlanMode" }
 func (t *EnterPlanModeTool) IsReadOnly() bool        { return true }
 func (t *EnterPlanModeTool) IsConcurrencySafe() bool { return true }
 
@@ -50,7 +50,7 @@ type ExitPlanModeTool struct{}
 
 var _ tools.Tool = (*ExitPlanModeTool)(nil)
 
-func (t *ExitPlanModeTool) Name() string           { return "ExitPlanMode" }
+func (t *ExitPlanModeTool) Name() string            { return "ExitPlanMode" }
 func (t *ExitPlanModeTool) IsReadOnly() bool        { return true }
 func (t *ExitPlanModeTool) IsConcurrencySafe() bool { return true }
 

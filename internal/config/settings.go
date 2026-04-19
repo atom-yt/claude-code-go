@@ -108,19 +108,19 @@ func Load(flags CLIFlags) Settings {
 	}
 
 	return Settings{
-		Model:       model,
-		APIKey:      apiKey,
-		Provider:    provider,
-		BaseURL:     baseURL,
-		Verbose:     flags.Verbose,
-		Permissions: perms,
-		Hooks:       hooksCfg,
-		MCPServers:  mcpServers,
-		AutoCompact:        autoCompact,
-		CompactThreshold:   compactThreshold,
-		CompactCooldown:    compactCooldown,
-		CompactKeepRecent:  compactKeepRecent,
-		ContextWindow:      contextWindow,
+		Model:             model,
+		APIKey:            apiKey,
+		Provider:          provider,
+		BaseURL:           baseURL,
+		Verbose:           flags.Verbose,
+		Permissions:       perms,
+		Hooks:             hooksCfg,
+		MCPServers:        mcpServers,
+		AutoCompact:       autoCompact,
+		CompactThreshold:  compactThreshold,
+		CompactCooldown:   compactCooldown,
+		CompactKeepRecent: compactKeepRecent,
+		ContextWindow:     contextWindow,
 	}
 }
 

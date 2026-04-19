@@ -13,7 +13,7 @@ import (
 
 // RetryConfig controls automatic retry behaviour for transient HTTP errors.
 type RetryConfig struct {
-	MaxRetries int
+	MaxRetries   int
 	InitialDelay time.Duration
 	MaxDelay     time.Duration
 }
@@ -29,10 +29,10 @@ var DefaultRetryConfig = RetryConfig{
 func retryable(code int) bool {
 	switch code {
 	case http.StatusTooManyRequests, // 429
-		http.StatusInternalServerError,  // 500
-		http.StatusBadGateway,           // 502
-		http.StatusServiceUnavailable,   // 503
-		http.StatusGatewayTimeout:       // 504
+		http.StatusInternalServerError, // 500
+		http.StatusBadGateway,          // 502
+		http.StatusServiceUnavailable,  // 503
+		http.StatusGatewayTimeout:      // 504
 		return true
 	}
 	return false

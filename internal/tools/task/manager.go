@@ -28,9 +28,9 @@ type Task struct {
 	Status      TaskStatus             `json:"status"`
 	ActiveForm  string                 `json:"activeForm,omitempty"`
 	Owner       string                 `json:"owner,omitempty"`
-	Blocks      []string               `json:"blocks,omitempty"`      // Task IDs this task blocks
-	BlockedBy   []string               `json:"blockedBy,omitempty"`   // Task IDs blocking this task
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`     // Additional metadata
+	Blocks      []string               `json:"blocks,omitempty"`    // Task IDs this task blocks
+	BlockedBy   []string               `json:"blockedBy,omitempty"` // Task IDs blocking this task
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`  // Additional metadata
 	CreatedAt   time.Time              `json:"createdAt"`
 	UpdatedAt   time.Time              `json:"updatedAt"`
 }

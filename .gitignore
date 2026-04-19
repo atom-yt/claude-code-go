@@ -20,4 +20,7 @@ dist/
 .env.*
 .comate/
 
+# User skills
+.claude/skills/
+
 build.sh

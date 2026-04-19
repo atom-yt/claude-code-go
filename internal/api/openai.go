@@ -57,9 +57,9 @@ type openAIContentPart struct {
 }
 
 type openAIToolCall struct {
-	ID       string              `json:"id"`
-	Type     string              `json:"type"`
-	Function openAIToolCallFunc  `json:"function"`
+	ID       string             `json:"id"`
+	Type     string             `json:"type"`
+	Function openAIToolCallFunc `json:"function"`
 }
 
 type openAIToolCallFunc struct {
@@ -68,8 +68,8 @@ type openAIToolCallFunc struct {
 }
 
 type openAITool struct {
-	Type     string            `json:"type"`
-	Function openAIToolDef     `json:"function"`
+	Type     string        `json:"type"`
+	Function openAIToolDef `json:"function"`
 }
 
 type openAIToolDef struct {
@@ -203,7 +203,7 @@ type openAIChunk struct {
 	Usage *struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
-		TotalTokens     int `json:"total_tokens"`
+		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
 }
 

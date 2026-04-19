@@ -14,13 +14,13 @@ import (
 
 // Record is one persisted session.
 type Record struct {
-	ID        string        `json:"id"`
-	Model     string        `json:"model"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
-	Messages  []api.Message `json:"messages"`
-	InputTokens  int        `json:"input_tokens"`
-	OutputTokens int        `json:"output_tokens"`
+	ID           string        `json:"id"`
+	Model        string        `json:"model"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+	Messages     []api.Message `json:"messages"`
+	InputTokens  int           `json:"input_tokens"`
+	OutputTokens int           `json:"output_tokens"`
 }
 
 // sessionsDir returns the path to ~/.claude/sessions/.

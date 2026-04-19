@@ -16,8 +16,8 @@ type Tool struct{}
 var _ tools.Tool = (*Tool)(nil)
 
 func (t *Tool) Name() string            { return "Write" }
-func (t *Tool) IsReadOnly() bool         { return false }
-func (t *Tool) IsConcurrencySafe() bool  { return false }
+func (t *Tool) IsReadOnly() bool        { return false }
+func (t *Tool) IsConcurrencySafe() bool { return false }
 
 func (t *Tool) Description() string {
 	return "Write content to a file, creating it (and any missing parent directories) if it doesn't exist, " +

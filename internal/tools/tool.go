@@ -5,8 +5,8 @@ import "context"
 
 // ToolResult is the output of a tool call.
 type ToolResult struct {
-	Output string // text to return to Claude as tool_result content
-	IsError bool  // if true, the output describes an error
+	Output  string // text to return to Claude as tool_result content
+	IsError bool   // if true, the output describes an error
 }
 
 // Tool is the interface every tool must implement.

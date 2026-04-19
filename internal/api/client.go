@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	defaultBaseURL        = "https://api.anthropic.com"
-	anthropicVersion      = "2023-06-01"
-	defaultMaxTokens      = 8096
+	defaultBaseURL   = "https://api.anthropic.com"
+	anthropicVersion = "2023-06-01"
+	defaultMaxTokens = 8096
 )
 
 // Client is an Anthropic Messages API client.

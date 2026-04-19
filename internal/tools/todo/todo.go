@@ -47,7 +47,7 @@ type Tool struct{}
 
 var _ tools.Tool = (*Tool)(nil)
 
-func (t *Tool) Name() string           { return "TodoWrite" }
+func (t *Tool) Name() string            { return "TodoWrite" }
 func (t *Tool) IsReadOnly() bool        { return false }
 func (t *Tool) IsConcurrencySafe() bool { return false } // Stateful, needs serialization
 

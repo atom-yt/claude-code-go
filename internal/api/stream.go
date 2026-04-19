@@ -90,8 +90,8 @@ func dispatchEvent(evType, data string, pending map[int]*pendingToolUse, ch chan
 		var payload struct {
 			Index int `json:"index"`
 			Delta struct {
-				Type      string `json:"type"`
-				Text      string `json:"text"`
+				Type        string `json:"type"`
+				Text        string `json:"text"`
 				PartialJSON string `json:"partial_json"`
 			} `json:"delta"`
 		}

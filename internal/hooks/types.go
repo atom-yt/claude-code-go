@@ -5,11 +5,11 @@ package hooks
 type Event string
 
 const (
-	EventSessionStart      Event = "session_start"
-	EventPreToolCall       Event = "pre_tool_call"
-	EventPostToolCall      Event = "post_tool_call"
-	EventUserPromptSubmit  Event = "user_prompt_submit"
-	EventStop              Event = "stop"
+	EventSessionStart     Event = "session_start"
+	EventPreToolCall      Event = "pre_tool_call"
+	EventPostToolCall     Event = "post_tool_call"
+	EventUserPromptSubmit Event = "user_prompt_submit"
+	EventStop             Event = "stop"
 )
 
 // CommandType identifies how a hook is executed.

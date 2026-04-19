@@ -21,8 +21,8 @@ type Tool struct{}
 var _ tools.Tool = (*Tool)(nil)
 
 func (t *Tool) Name() string            { return "Grep" }
-func (t *Tool) IsReadOnly() bool         { return true }
-func (t *Tool) IsConcurrencySafe() bool  { return true }
+func (t *Tool) IsReadOnly() bool        { return true }
+func (t *Tool) IsConcurrencySafe() bool { return true }
 
 func (t *Tool) Description() string {
 	return "Search for a regular expression pattern in files. " +

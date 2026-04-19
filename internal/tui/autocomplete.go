@@ -6,18 +6,18 @@ import (
 
 // AutocompleteState 管理自动补全状态
 type AutocompleteState struct {
-	visible      bool     // 是否显示补全菜单
-	query        string   // 当前搜索查询（不包含 /）
-	suggestions  []string // 过滤后的命令列表
-	selectedIndex int     // 当前选中的建议索引
+	visible       bool     // 是否显示补全菜单
+	query         string   // 当前搜索查询（不包含 /）
+	suggestions   []string // 过滤后的命令列表
+	selectedIndex int      // 当前选中的建议索引
 }
 
 // showAutocomplete 显示斜杠命令自动补全
 func (m *Model) showAutocomplete(query string) {
 	m.autocomplete = &AutocompleteState{
-		visible:      true,
-		query:        strings.TrimPrefix(query, "/"),
-		suggestions:  m.filterCommands(strings.TrimPrefix(query, "/")),
+		visible:       true,
+		query:         strings.TrimPrefix(query, "/"),
+		suggestions:   m.filterCommands(strings.TrimPrefix(query, "/")),
 		selectedIndex: 0,
 	}
 }
