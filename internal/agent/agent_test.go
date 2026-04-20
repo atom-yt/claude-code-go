@@ -30,6 +30,21 @@ func (t *mockTool) Call(_ context.Context, _ map[string]any) (tools.ToolResult, 
 	return tools.ToolResult{Output: t.output}, nil
 }
 
+type mockStreamer struct {
+	lastReq api.MessagesRequest
+	events  []api.APIEvent
+}
+
+func (m *mockStreamer) StreamMessages(_ context.Context, req api.MessagesRequest) <-chan api.APIEvent {
+	m.lastReq = req
+	ch := make(chan api.APIEvent, len(m.events))
+	for _, ev := range m.events {
+		ch <- ev
+	}
+	close(ch)
+	return ch
+}
+
 // sseResponse builds a minimal SSE response body for the Anthropic streaming format.
 func sseTextResponse(text string) string {
 	return fmt.Sprintf(`event: message_start
@@ -297,5 +312,30 @@ func TestAgent_HistoryPreserved(t *testing.T) {
 	}
 	if history[3].Role != api.RoleAssistant {
 		t.Errorf("want 4th entry to be assistant, got %q", history[3].Role)
+	}
+}
+
+// TestAgent_SystemPromptInjected verifies the agent forwards its system prompt
+// through the request payload.
+func TestAgent_SystemPromptInjected(t *testing.T) {
+	streamer := &mockStreamer{
+		events: []api.APIEvent{
+			{Type: api.EventTextDelta, Text: "done"},
+			{Type: api.EventMessageStop, StopReason: "end_turn"},
+		},
+	}
+
+	ag := agent.New(streamer, "claude-test", nil, nil, nil)
+	ag.SetSystemPrompt("use project instructions")
+
+	ch := ag.Query(context.Background(), "hello")
+	collectAgentEvents(ch)
+
+	blocks, ok := streamer.lastReq.System.([]api.ContentBlock)
+	if !ok || len(blocks) != 1 {
+		t.Fatalf("want one system block, got %#v", streamer.lastReq.System)
+	}
+	if blocks[0].Text != "use project instructions" {
+		t.Fatalf("want injected system prompt, got %#v", blocks[0].Text)
 	}
 }

@@ -136,6 +136,33 @@ func convertMessages(msgs []Message) []openAIMessage {
 	return out
 }
 
+func convertSystemToMessages(system interface{}) []openAIMessage {
+	if system == nil {
+		return nil
+	}
+
+	switch v := system.(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil
+		}
+		return []openAIMessage{{Role: "system", Content: v}}
+	case []ContentBlock:
+		var parts []string
+		for _, block := range v {
+			if block.Type == "text" && strings.TrimSpace(block.Text) != "" {
+				parts = append(parts, block.Text)
+			}
+		}
+		if len(parts) == 0 {
+			return nil
+		}
+		return []openAIMessage{{Role: "system", Content: strings.Join(parts, "\n\n")}}
+	default:
+		return nil
+	}
+}
+
 func convertTools(specs []ToolSpec) []openAITool {
 	out := make([]openAITool, len(specs))
 	for i, s := range specs {
@@ -158,7 +185,7 @@ func (c *OpenAIClient) stream(ctx context.Context, req MessagesRequest, ch chan<
 
 	oaiReq := openAIRequest{
 		Model:    req.Model,
-		Messages: convertMessages(req.Messages),
+		Messages: append(convertSystemToMessages(req.System), convertMessages(req.Messages)...),
 		Tools:    convertTools(req.Tools),
 		Stream:   true,
 	}

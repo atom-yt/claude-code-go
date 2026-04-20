@@ -19,6 +19,7 @@ type Agent struct {
 	registry *tools.Registry
 	checker  *permissions.Checker
 	executor *hooks.Executor
+	system   string
 	history  []api.Message
 }
 
@@ -39,6 +40,9 @@ func (a *Agent) SetModel(model string) { a.model = model }
 // SetClient replaces the API client (used when switching providers at runtime).
 func (a *Agent) SetClient(client api.Streamer) { a.client = client }
 
+// SetSystemPrompt changes the system prompt used for subsequent queries.
+func (a *Agent) SetSystemPrompt(system string) { a.system = system }
+
 // SetHistory replaces the conversation history (used when resuming a session).
 func (a *Agent) SetHistory(msgs []api.Message) {
 	a.history = make([]api.Message, len(msgs))
@@ -55,6 +59,11 @@ func (a *Agent) History() []api.Message {
 // GetClient returns the current API client.
 func (a *Agent) GetClient() api.Streamer {
 	return a.client
+}
+
+// GetSystemPrompt returns the current system prompt.
+func (a *Agent) GetSystemPrompt() string {
+	return a.system
 }
 
 // Query appends the user message to history, runs the agent loop, and streams
@@ -97,6 +106,9 @@ func (a *Agent) run(ctx context.Context, userText string, ch chan<- StreamEvent)
 			Model:    a.model,
 			Messages: a.history,
 			Tools:    toolSpecs,
+		}
+		if a.system != "" {
+			req.SetSystemWithCaching(a.system)
 		}
 
 		apiCh := a.client.StreamMessages(ctx, req)
