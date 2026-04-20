@@ -12,12 +12,22 @@ import (
 	"time"
 
 	"github.com/atom-yt/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/urlutil"
 )
 
 // Tool implements the WebSearch tool.
-type Tool struct{}
+type Tool struct {
+	validator *urlutil.URLValidator
+}
 
 var _ tools.Tool = (*Tool)(nil)
+
+// NewTool creates a new WebSearch tool with URL validation enabled.
+func NewTool() *Tool {
+	return &Tool{
+		validator: urlutil.NewURLValidator(),
+	}
+}
 
 func (t *Tool) Name() string            { return "WebSearch" }
 func (t *Tool) IsReadOnly() bool        { return true }
@@ -58,7 +68,7 @@ func (t *Tool) Call(ctx context.Context, input map[string]any) (tools.ToolResult
 		}
 	}
 
-	results, err := search(ctx, query, maxResults)
+	results, err := t.search(ctx, query, maxResults)
 	if err != nil {
 		return tools.ToolResult{Output: fmt.Sprintf("Search error: %v", err), IsError: true}, nil
 	}
@@ -82,8 +92,13 @@ type searchResult struct {
 }
 
 // search performs an HTML search via DuckDuckGo and parses the results.
-func search(ctx context.Context, query string, maxResults int) ([]searchResult, error) {
+func (t *Tool) search(ctx context.Context, query string, maxResults int) ([]searchResult, error) {
 	searchURL := "https://html.duckduckgo.com/html/?q=" + url.QueryEscape(query)
+
+	// Validate the search URL
+	if err := t.validator.Validate(searchURL); err != nil {
+		return nil, fmt.Errorf("search URL validation failed: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
@@ -107,7 +122,7 @@ func search(ctx context.Context, query string, maxResults int) ([]searchResult, 
 		return nil, err
 	}
 
-	return parseResults(string(body), maxResults), nil
+	return t.parseResults(string(body), maxResults), nil
 }
 
 // Regex patterns for DuckDuckGo HTML result parsing.
@@ -120,7 +135,7 @@ var (
 	reHTMLTag     = regexp.MustCompile(`<[^>]+>`)
 )
 
-func parseResults(html string, maxResults int) []searchResult {
+func (t *Tool) parseResults(html string, maxResults int) []searchResult {
 	blocks := reResultBlock.FindAllStringSubmatch(html, maxResults*2)
 	var results []searchResult
 
@@ -145,13 +160,18 @@ func parseResults(html string, maxResults int) []searchResult {
 			snippet = strings.TrimSpace(reHTMLTag.ReplaceAllString(snippetMatch[1], ""))
 		}
 
-		// DuckDuckGo sometimes wraps URLs in a redirect; extract the actual URL.
+		// DuckDuckGo sometimes wraps URLs in a redirect; extract actual URL.
 		if strings.Contains(link, "uddg=") {
 			if u, err := url.Parse(link); err == nil {
 				if actual := u.Query().Get("uddg"); actual != "" {
 					link = actual
 				}
 			}
+		}
+
+		// Skip results that point to internal addresses
+		if err := t.validator.Validate(link); err != nil {
+			continue
 		}
 
 		results = append(results, searchResult{

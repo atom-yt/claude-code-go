@@ -10,12 +10,22 @@ import (
 	"time"
 
 	"github.com/atom-yt/claude-code-go/internal/tools"
+	"github.com/atom-yt/claude-code-go/internal/urlutil"
 )
 
 // Tool implements the WebFetch tool.
-type Tool struct{}
+type Tool struct {
+	validator *urlutil.URLValidator
+}
 
 var _ tools.Tool = (*Tool)(nil)
+
+// NewTool creates a new WebFetch tool with URL validation enabled.
+func NewTool() *Tool {
+	return &Tool{
+		validator: urlutil.NewURLValidator(),
+	}
+}
 
 func (t *Tool) Name() string            { return "WebFetch" }
 func (t *Tool) IsReadOnly() bool        { return true }
@@ -50,6 +60,11 @@ func (t *Tool) Call(ctx context.Context, input map[string]any) (tools.ToolResult
 	url, _ := input["url"].(string)
 	if url == "" {
 		return tools.ToolResult{Output: "Error: url parameter is required", IsError: true}, nil
+	}
+
+	// Validate URL for security (SSRF prevention, internal IP blocking)
+	if err := t.validator.Validate(url); err != nil {
+		return tools.ToolResult{Output: fmt.Sprintf("URL validation failed: %v", err), IsError: true}, nil
 	}
 
 	// Parse timeout

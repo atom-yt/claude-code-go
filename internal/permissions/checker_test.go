@@ -75,3 +75,82 @@ func TestChecker_NoAskFn_Denied(t *testing.T) {
 		t.Error("without AskFn, manual mode should deny")
 	}
 }
+
+func TestChecker_MCPFullTrust_AutoAllowed(t *testing.T) {
+	c := New(ModeDefault)
+	c.MCPTrustLevels = map[string]string{"myserver": "full"}
+
+	d, _ := c.Check(context.Background(), "mcp__myserver__tool1", map[string]any{})
+	if !d.Allowed {
+		t.Errorf("MCP tool from 'full' trust server should be auto-allowed, got allowed=%v, reason=%q", d.Allowed, d.Reason)
+	}
+}
+
+func TestChecker_MCPLimitedTrust_RequiresAsk(t *testing.T) {
+	c := New(ModeDefault)
+	c.MCPTrustLevels = map[string]string{"myserver": "limited"}
+
+	asked := false
+	c.AskFn = func(_ context.Context, _ AskRequest) (bool, string) {
+		asked = true
+		return true, ""
+	}
+	d, _ := c.Check(context.Background(), "mcp__myserver__tool1", map[string]any{})
+
+	if !asked {
+		t.Error("MCP tool from 'limited' trust server should ask for permission")
+	}
+	if !d.Allowed {
+		t.Errorf("MCP tool from 'limited' trust should be allowed after ask: %s", d.Reason)
+	}
+}
+
+func TestChecker_MCPUntrustedTrust_RequiresAsk(t *testing.T) {
+	c := New(ModeDefault)
+	c.MCPTrustLevels = map[string]string{"myserver": "untrusted"}
+
+	asked := false
+	c.AskFn = func(_ context.Context, _ AskRequest) (bool, string) {
+		asked = true
+		return true, ""
+	}
+	d, _ := c.Check(context.Background(), "mcp__myserver__tool1", map[string]any{})
+
+	if !asked {
+		t.Error("MCP tool from 'untrusted' trust server should ask for permission")
+	}
+	if !d.Allowed {
+		t.Errorf("MCP tool from 'untrusted' trust should be allowed after ask: %s", d.Reason)
+	}
+}
+
+func TestChecker_MCPDefaultTrust_RequiresAsk(t *testing.T) {
+	c := New(ModeDefault)
+	c.MCPTrustLevels = map[string]string{"myserver": ""} // empty = default untrusted
+
+	asked := false
+	c.AskFn = func(_ context.Context, _ AskRequest) (bool, string) {
+		asked = true
+		return true, ""
+	}
+	d, _ := c.Check(context.Background(), "mcp__myserver__tool1", map[string]any{})
+
+	if !asked {
+		t.Error("MCP tool with default trust should ask for permission")
+	}
+	if !d.Allowed {
+		t.Errorf("MCP tool with default trust should be allowed after ask: %s", d.Reason)
+	}
+}
+
+func TestChecker_MCPDenyRuleTakesPriority(t *testing.T) {
+	c := New(ModeDefault)
+	c.MCPTrustLevels = map[string]string{"myserver": "full"}
+	c.DenyRules = []Rule{{Tool: "mcp__myserver__tool1"}}
+
+	d, _ := c.Check(context.Background(), "mcp__myserver__tool1", map[string]any{})
+	if d.Allowed {
+		t.Error("deny rule should block MCP tool even with full trust")
+	}
+}
+

@@ -14,10 +14,14 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/agent"
 	"github.com/atom-yt/claude-code-go/internal/api"
 	"github.com/atom-yt/claude-code-go/internal/commands"
+	"github.com/atom-yt/claude-code-go/internal/compact"
 	"github.com/atom-yt/claude-code-go/internal/config"
 	"github.com/atom-yt/claude-code-go/internal/hooks"
 	"github.com/atom-yt/claude-code-go/internal/mcp"
+	"github.com/atom-yt/claude-code-go/internal/memory"
 	"github.com/atom-yt/claude-code-go/internal/permissions"
+	"github.com/atom-yt/claude-code-go/internal/prompt"
+	"github.com/atom-yt/claude-code-go/internal/providers"
 	"github.com/atom-yt/claude-code-go/internal/session"
 	"github.com/atom-yt/claude-code-go/internal/skills"
 	"github.com/atom-yt/claude-code-go/internal/tools"
@@ -190,7 +194,7 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		sessionID:     session.NewID(),
 		mdRenderer:    &glamourRenderer{},
 		// Initialize compact config
-		contextWindow: getContextWindow(settings.Model),
+		contextWindow: providers.ContextWindow(settings.Model),
 	}
 
 	// Register skill command if skills are available
@@ -255,9 +259,12 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 			registry.Register(skills.NewSkillTool(m.skillRegistry))
 		}
 
-		checker := buildChecker(settings.Permissions, &m)
+		checker := buildChecker(settings.Permissions, &m, settings.MCPServers)
 		executor := buildExecutor(settings.Hooks)
 		m.ag = agent.New(client, settings.Model, registry, checker, executor)
+		if systemPrompt := buildSystemPrompt(m.skillRegistry); systemPrompt != "" {
+			m.ag.SetSystemPrompt(systemPrompt)
+		}
 
 		// Fire session_start hook.
 		if executor != nil {
@@ -288,13 +295,24 @@ func NewModelWithHistory(cliCfg Config, rec session.Record) Model {
 	m.sessionInputTokens = 0
 	m.sessionOutputTokens = 0
 
-	// Replay messages into the UI.
-	for _, msg := range rec.Messages {
+	m.messages = chatMessagesFromHistory(rec.Messages)
+
+	// Restore agent history so conversation context is preserved.
+	if m.ag != nil {
+		m.ag.SetHistory(rec.Messages)
+	}
+
+	return m
+}
+
+func chatMessagesFromHistory(history []api.Message) []ChatMessage {
+	var messages []ChatMessage
+	for _, msg := range history {
 		switch msg.Role {
 		case api.RoleUser:
 			for _, block := range msg.Content {
 				if block.Type == "text" && block.Text != "" {
-					m.messages = append(m.messages, ChatMessage{Role: RoleUser, Content: block.Text})
+					messages = append(messages, ChatMessage{Role: RoleUser, Content: block.Text})
 				}
 			}
 		case api.RoleAssistant:
@@ -305,17 +323,11 @@ func NewModelWithHistory(cliCfg Config, rec session.Record) Model {
 				}
 			}
 			if text != "" {
-				m.messages = append(m.messages, ChatMessage{Role: RoleAssistant, Content: text})
+				messages = append(messages, ChatMessage{Role: RoleAssistant, Content: text})
 			}
 		}
 	}
-
-	// Restore agent history so conversation context is preserved.
-	if m.ag != nil {
-		m.ag.SetHistory(rec.Messages)
-	}
-
-	return m
+	return messages
 }
 
 // historyHeight returns the pixel-line height of the history area.
@@ -340,109 +352,22 @@ func (m *Model) clampScroll() {
 	}
 }
 
-// providerInfo describes a known provider's default base URL and protocol.
-type providerInfo struct {
-	baseURL  string
-	protocol string // "anthropic" or "openai"
-}
-
-// knownProviders maps provider name → connection info.
-// BaseURL for OpenAI-compatible providers must include the version prefix (e.g. /v1)
-// because the client appends only /chat/completions.
-var knownProviders = map[string]providerInfo{
-	"openai":   {"https://api.openai.com/v1", "openai"},
-	"kimi":     {"https://api.moonshot.cn/v1", "openai"},
-	"moonshot": {"https://api.moonshot.cn/v1", "openai"},
-	"deepseek": {"https://api.deepseek.com/v1", "openai"},
-	"qwen":     {"https://dashscope.aliyuncs.com/compatible-mode/v1", "openai"},
-	"codex":    {"https://coder.api.visioncoder.cn/v1", "openai"},
-	// ByteDance Ark — OpenAI-compatible: /v3/chat/completions (no extra /v1)
-	"ark":        {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
-	"ark-openai": {"https://ark.cn-beijing.volces.com/api/coding/v3", "openai"},
-	// ByteDance Ark — Anthropic-compatible: appends /v1/messages
-	"ark-anthropic": {"https://ark.cn-beijing.volces.com/api/coding", "anthropic"},
-}
-
-// modelContextWindows maps model names to their context window sizes (in tokens).
-var modelContextWindows = map[string]int{
-	// Claude models
-	"claude-sonnet-4-6": 200000,
-	"claude-opus-4-6":   200000,
-	"claude-3-opus":     200000,
-	"claude-3-sonnet":   200000,
-	"claude-3-haiku":    200000,
-	"claude-3.5-sonnet": 200000,
-	"claude-3.5-haiku":  200000,
-	// OpenAI GPT models
-	"gpt-4o":        128000,
-	"gpt-4o-mini":   128000,
-	"gpt-4-turbo":   128000,
-	"gpt-4":         8192,
-	"gpt-3.5-turbo": 16385,
-	"o1":            200000,
-	"o1-mini":       128000,
-	"o1-preview":    128000,
-	"o3":            200000,
-	"o3-mini":       200000,
-	// DeepSeek models
-	"deepseek-chat":  128000,
-	"deepseek-coder": 128000,
-	// Qwen models
-	"qwen":    128000,
-	"qwen2":   128000,
-	"qwen-max": 32768,
-	// Kimi models
-	"moonshot-v1": 128000,
-}
-
-// getContextWindow returns the context window size for a given model.
-// Returns 128000 for unknown models (safe default for most modern LLMs).
-func getContextWindow(model string) int {
-	// First check if model matches a known prefix
-	for knownModel, window := range modelContextWindows {
-		if model == knownModel || len(model) > len(knownModel) && model[:len(knownModel)] == knownModel {
-			return window
-		}
-	}
-	// Fallback to 128000 (safe default for most modern LLMs)
-	return 128000
-}
-
 // buildClient creates the right API client based on provider/baseURL settings.
 func buildClient(s config.Settings) api.Streamer {
 	provider := strings.ToLower(s.Provider)
+	baseURL := providers.ResolveBaseURL(provider, s.BaseURL)
+	protocol := providers.ResolveProtocol(provider)
 
-	if provider != "" && provider != "anthropic" {
-		info, known := knownProviders[provider]
-
-		baseURL := s.BaseURL
-		if baseURL == "" && known {
-			baseURL = info.baseURL
-		}
-
-		protocol := "openai"
-		if known {
-			protocol = info.protocol
-		}
-
-		if protocol == "anthropic" {
-			return api.NewWithBaseURL(s.APIKey, baseURL)
-		}
-		return api.NewOpenAI(s.APIKey, baseURL)
+	if provider == "" && s.BaseURL == "" {
+		return api.New(s.APIKey)
 	}
-
-	// Anthropic provider with a custom base URL (e.g. ark-anthropic endpoint via --base-url).
-	if provider == "anthropic" && s.BaseURL != "" {
-		return api.NewWithBaseURL(s.APIKey, s.BaseURL)
+	if provider == "anthropic" && s.BaseURL == "" {
+		return api.New(s.APIKey)
 	}
-
-	// Custom base URL only → assume OpenAI-compatible.
-	if s.BaseURL != "" {
-		return api.NewOpenAI(s.APIKey, s.BaseURL)
+	if protocol == providers.ProtocolAnthropic {
+		return api.NewWithBaseURL(s.APIKey, baseURL)
 	}
-
-	// Default: Anthropic.
-	return api.New(s.APIKey)
+	return api.NewOpenAI(s.APIKey, baseURL)
 }
 
 // buildRegistry registers all built-in tools.
@@ -454,8 +379,8 @@ func buildRegistry() *tools.Registry {
 	r.Register(&toolbash.Tool{})
 	r.Register(&toolglob.Tool{})
 	r.Register(&toolgrep.Tool{})
-	r.Register(&toolwebfetch.Tool{})
-	r.Register(&toolwebsearch.Tool{})
+	r.Register(toolwebfetch.NewTool())
+	r.Register(toolwebsearch.NewTool())
 	r.Register(&toolplanmode.EnterPlanModeTool{})
 	r.Register(&toolplanmode.ExitPlanModeTool{})
 	r.Register(&tooltodo.Tool{})
@@ -490,7 +415,12 @@ func connectMCPServers(ctx context.Context, servers map[string]config.MCPServerC
 				ch <- result{name: name, err: fmt.Errorf("unsupported MCP transport: %q", cfg.Type)}
 				return
 			}
-			c, err := mcp.ConnectStdio(ctx, name, cfg.Command, cfg.Args, cfg.Env)
+			// Default trust level is "untrusted" if not specified
+			trust := cfg.Trust
+			if trust == "" {
+				trust = config.TrustUntrusted
+			}
+			c, err := mcp.ConnectStdio(ctx, name, trust, cfg.Command, cfg.Args, cfg.Env)
 			ch <- result{name: name, client: c, err: err}
 		}()
 	}
@@ -534,13 +464,27 @@ func buildExecutor(cfg map[string][]config.HookMatcherConfig) *hooks.Executor {
 }
 
 // buildChecker constructs a Checker from config, wiring the AskFn to the TUI.
-func buildChecker(cfg config.PermissionsConfig, m *Model) *permissions.Checker {
+func buildChecker(cfg config.PermissionsConfig, m *Model, mcpServers map[string]config.MCPServerConfig) *permissions.Checker {
 	mode := permissions.Mode(cfg.DefaultMode)
 	if mode == "" {
 		mode = permissions.ModeDefault
 	}
 
 	checker := permissions.New(mode)
+
+	// Populate MCP trust levels from server config
+	if mcpServers != nil {
+		mcpTrustLevels := make(map[string]string)
+		for name, srv := range mcpServers {
+			trust := srv.Trust
+			if trust == "" {
+				trust = config.TrustUntrusted
+			}
+			mcpTrustLevels[name] = trust
+		}
+		checker.MCPTrustLevels = mcpTrustLevels
+	}
+
 	for _, r := range cfg.Allow {
 		checker.AllowRules = append(checker.AllowRules, permissions.Rule{Tool: r.Tool, Path: r.Path, Command: r.Command})
 	}
@@ -665,40 +609,40 @@ func (m *Model) compactHistory(ctx context.Context) error {
 		return fmt.Errorf("no agent available")
 	}
 
-	// Get old messages to summarize (excluding recent ones)
-	keepRecent := m.compactKeepRecent
-	if len(m.messages) <= keepRecent {
-		// Not enough messages to compact
-		return fmt.Errorf("not enough messages to compact (need more than %d messages, currently have %d)", keepRecent, len(m.messages))
+	service := compact.NewService(m.ag.GetClient(), m.cfg.Model, m.ag.GetSystemPrompt())
+	result, err := service.Compact(ctx, m.ag.History(), m.compactKeepRecent)
+	if err != nil {
+		return err
+	}
+	if result.Noop {
+		return nil
 	}
 
-	// This is a simplified compact that just keeps recent messages
-	// The summary generation is a TODO for future implementation
-
-	// Keep recent messages and add a system message about compaction
-	newMessages := []ChatMessage{
-		{Role: RoleUser, Content: "<!-- History compacted: older messages have been removed to save context. -->"},
+	m.ag.SetHistory(result.History)
+	m.messages = chatMessagesFromHistory(result.History)
+	if err := m.persistCompactSummary(result.Summary); err != nil {
+		m.messages = append(m.messages, ChatMessage{
+			Role:    RoleError,
+			Content: fmt.Sprintf("Warning: failed to persist compact summary: %v", err),
+		})
 	}
-	newMessages = append(newMessages, m.messages[len(m.messages)-keepRecent:]...)
-
-	m.messages = newMessages
-
-	// Update agent history to remove old messages
-	// Get current history
-	history := m.ag.History()
-	// Keep only recent messages from history (accounting for user/assistant pairs)
-	// This is a simple approach - keep last N messages worth of history
-	if len(history) > keepRecent*2 { // *2 because of user/assistant pairs
-		history = history[len(history)-keepRecent*2:]
-	}
-	m.ag.SetHistory(history)
 
 	// Reset session token counters
 	m.sessionInputTokens = 0
 	m.sessionOutputTokens = 0
 	m.lastCompactTime = time.Now()
+	go m.saveSession()
 
 	return nil
+}
+
+func (m *Model) persistCompactSummary(summary string) error {
+	store, err := memory.NewSummaryStore()
+	if err != nil {
+		return err
+	}
+	_, err = store.WriteSessionSummary(m.sessionID, m.cfg.Model, summary)
+	return err
 }
 
 // scanSkills scans the default directories for skills and returns a registry.
@@ -724,4 +668,29 @@ func scanSkills() *skills.Registry {
 	_ = registry.Scan()
 
 	return registry
+}
+
+func buildSystemPrompt(registry *skills.Registry) string {
+	projectCtx, err := prompt.DiscoverProjectContext("")
+	if err != nil {
+		projectCtx = prompt.ProjectContext{}
+	}
+
+	var skillSummaries []prompt.SkillSummary
+	if registry != nil {
+		for _, skill := range registry.List() {
+			skillSummaries = append(skillSummaries, prompt.SkillSummary{
+				Name:        skill.Name,
+				Trigger:     skill.Trigger,
+				Description: skill.Description,
+				Source:      string(skill.Source),
+			})
+		}
+	}
+
+	return prompt.BuildSystemPrompt(prompt.SystemPromptInput{
+		Project:       projectCtx,
+		Skills:        skillSummaries,
+		MemorySnippet: prompt.DiscoverMemorySnippet(),
+	})
 }

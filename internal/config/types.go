@@ -64,7 +64,15 @@ type MCPServerConfig struct {
 	Env     []string          `json:"env"`     // extra env vars ("KEY=VALUE")
 	URL     string            `json:"url"`     // for sse
 	Headers map[string]string `json:"headers"` // for sse
+	Trust   string            `json:"trust"`   // "full" | "limited" | "untrusted" (default: "untrusted")
 }
+
+// Trust levels for MCP servers.
+const (
+	TrustFull     = "full"     // No permission prompts for MCP tools
+	TrustLimited  = "limited"  // Prompt for potentially dangerous operations
+	TrustUntrusted = "untrusted" // Prompt for all operations (default)
+)
 
 // settingsFile mirrors the full JSON structure of ~/.claude/settings.json.
 type settingsFile struct {

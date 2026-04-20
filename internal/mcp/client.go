@@ -17,10 +17,11 @@ const initTimeout = 10 * time.Second
 
 // Client connects to one MCP server and wraps its tools as Tool objects.
 type Client struct {
-	name   string
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	stdout *bufio.Reader
+	name    string
+	trust   string // Trust level: "full", "limited", "untrusted"
+	cmd     *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  *bufio.Reader
 
 	mu      sync.Mutex
 	nextID  atomic.Int64
@@ -30,7 +31,7 @@ type Client struct {
 }
 
 // ConnectStdio starts an MCP server via stdio and performs the handshake.
-func ConnectStdio(ctx context.Context, name, command string, args []string, env []string) (*Client, error) {
+func ConnectStdio(ctx context.Context, name, trust string, command string, args []string, env []string) (*Client, error) {
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Env = append(cmd.Environ(), env...)
 
@@ -49,6 +50,7 @@ func ConnectStdio(ctx context.Context, name, command string, args []string, env 
 
 	c := &Client{
 		name:    name,
+		trust:   trust,
 		cmd:     cmd,
 		stdin:   stdin,
 		stdout:  bufio.NewReader(stdoutPipe),

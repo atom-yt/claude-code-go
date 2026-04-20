@@ -15,6 +15,8 @@ type Checker struct {
 	AllowRules []Rule
 	DenyRules  []Rule
 	AskRules   []Rule
+	// MCPTrustLevels maps server name to trust level: "full", "limited", "untrusted"
+	MCPTrustLevels map[string]string
 	// AskFn is required when Mode == ModeManual or AskRules are configured.
 	// If nil, unknown calls are denied.
 	AskFn AskFn
@@ -66,7 +68,7 @@ func (c *Checker) Check(ctx context.Context, toolName string, input map[string]a
 	default: // ModeDefault
 		// In default mode, read-only tools are auto-allowed;
 		// mutating tools require ask.
-		if isReadOnlyTool(toolName) {
+		if c.isReadOnlyTool(toolName) {
 			return Decision{Allowed: true}, nil
 		}
 		return c.ask(ctx, toolName, input, "default mode")
@@ -96,12 +98,49 @@ func (c *Checker) ask(ctx context.Context, toolName string, input map[string]any
 
 // isReadOnlyTool returns true for tools that are known to be read-only
 // and can be auto-approved in default mode.
-func isReadOnlyTool(name string) bool {
+// For MCP tools (prefix "mcp__"), trust level determines auto-approval:
+// - "full": auto-approved (treated as read-only)
+// - "limited" or "untrusted": requires permission prompt
+func (c *Checker) isReadOnlyTool(name string) bool {
 	switch name {
-	case "Read", "Glob", "Grep":
+	case "Read", "Glob", "Grep",
+		"WebFetch", "WebSearch",
+		"AskUserQuestion", "TaskCreate", "TaskGet", "TaskList", "TaskUpdate",
+		"EnterPlanMode", "ExitPlanMode":
 		return true
 	}
+
+	// Check MCP tools
+	if c.MCPTrustLevels != nil && len(name) > 5 && name[:5] == "mcp__" {
+		// Parse: mcp__<server>__<tool>
+		parts := splitMCPToolName(name)
+		if len(parts) == 3 {
+			server := parts[1]
+			trust, ok := c.MCPTrustLevels[server]
+			if ok && trust == "full" {
+				return true
+			}
+		}
+	}
+
 	return false
+}
+
+// splitMCPToolName splits "mcp__server__tool" into ["mcp", "server", "tool"].
+func splitMCPToolName(name string) []string {
+	parts := make([]string, 0, 3)
+	start := 0
+	for i := 0; i < len(name) && len(parts) < 3; i++ {
+		if i+1 < len(name) && name[i:i+2] == "__" {
+			parts = append(parts, name[start:i])
+			start = i + 2
+			i++ // skip second underscore
+		}
+	}
+	if start < len(name) {
+		parts = append(parts, name[start:])
+	}
+	return parts
 }
 
 func ruleDesc(r Rule) string {

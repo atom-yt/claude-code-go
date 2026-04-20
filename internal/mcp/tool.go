@@ -12,6 +12,7 @@ type mcpTool struct {
 	client *Client
 	def    ToolDef
 	name   string // prefixed: mcp__<server>__<name>
+	trust  string // Trust level of the MCP server
 }
 
 var _ tools.Tool = (*mcpTool)(nil)
@@ -20,6 +21,9 @@ func (t *mcpTool) Name() string            { return t.name }
 func (t *mcpTool) IsReadOnly() bool        { return false }
 func (t *mcpTool) IsConcurrencySafe() bool { return false }
 func (t *mcpTool) Description() string     { return t.def.Description }
+
+// TrustLevel returns the trust level of the MCP server.
+func (t *mcpTool) TrustLevel() string { return t.trust }
 
 func (t *mcpTool) InputSchema() map[string]any {
 	if t.def.InputSchema != nil {
@@ -45,6 +49,7 @@ func RegisterTools(registry *tools.Registry, client *Client) {
 			client: client,
 			def:    def,
 			name:   prefixed,
+			trust:  client.trust,
 		})
 	}
 }
