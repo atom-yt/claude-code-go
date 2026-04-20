@@ -264,6 +264,9 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		m.ag = agent.New(client, settings.Model, registry, checker, executor)
 		if systemPrompt := buildSystemPrompt(m.skillRegistry); systemPrompt != "" {
 			m.ag.SetSystemPrompt(systemPrompt)
+
+			// Log assembled context for Phase 1 acceptance verification
+			logAssembledContext(settings.Model, len(registry.GetAll()), len(m.messages), systemPrompt)
 		}
 
 		// Fire session_start hook.
@@ -693,4 +696,20 @@ func buildSystemPrompt(registry *skills.Registry) string {
 		Skills:        skillSummaries,
 		MemorySnippet: prompt.DiscoverMemorySnippet(),
 	})
+}
+
+// logAssembledContext prints the assembled context for Phase 1 acceptance verification.
+func logAssembledContext(modelName string, toolsCount int, historyLength int, prompt string) {
+	fmt.Fprintln(os.Stderr, "=== Assembled Context ===")
+	fmt.Fprintf(os.Stderr, "Model: %s\n", modelName)
+	fmt.Fprintf(os.Stderr, "Tools Available: %d\n", toolsCount)
+	fmt.Fprintf(os.Stderr, "History Messages: %d\n", historyLength)
+	fmt.Fprintln(os.Stderr, "=== System Prompt (Truncated) ===")
+	if len(prompt) > 500 {
+		fmt.Fprintln(os.Stderr, prompt[:500])
+		fmt.Fprintf(os.Stderr, "... (truncated, %d chars total)\n", len(prompt))
+	} else {
+		fmt.Fprintln(os.Stderr, prompt)
+	}
+	fmt.Fprintln(os.Stderr)
 }
