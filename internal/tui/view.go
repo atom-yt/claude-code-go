@@ -245,6 +245,20 @@ func (m Model) renderStatusBar() string {
 	cwd, _ := getCWD()
 
 	var parts []string
+
+	// Show plan mode indicator
+	if m.runtimeState != nil && m.runtimeState.IsPlanMode() {
+		parts = append(parts, m.styles.planMode.Render("PLAN MODE"))
+	}
+
+	// Show task summary
+	if m.taskManager != nil {
+		pendingCount := len(m.taskManager.GetPendingTasks())
+		if pendingCount > 0 {
+			parts = append(parts, fmt.Sprintf("tasks:%d", pendingCount))
+		}
+	}
+
 	parts = append(parts, "model:"+model)
 	if cwd != "" {
 		if len(cwd) > 30 {

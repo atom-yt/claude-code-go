@@ -177,6 +177,7 @@ type styles struct {
 	autocompleteHeader   lipgloss.Style
 	autocompleteItem     lipgloss.Style
 	autocompleteSelected lipgloss.Style
+	planMode             lipgloss.Style
 }
 
 // NewModel creates an initialised TUI model.
@@ -262,6 +263,9 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 
 	// Initialize task manager with durable storage.
 	if cwd, err := os.Getwd(); err == nil {
+		if err := tooltask.Initialize(cwd); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to initialize task manager: %v\n", err)
+		}
 		if taskStore, err := taskstore.New(cwd); err == nil {
 			m.taskManager = taskStore
 		} else {
@@ -586,6 +590,7 @@ func buildStyles() styles {
 		autocompleteHeader:   lipgloss.NewStyle().Background(lipgloss.Color("236")).Foreground(lipgloss.Color("244")).Bold(true),
 		autocompleteItem:     lipgloss.NewStyle().Foreground(lipgloss.Color("251")),
 		autocompleteSelected: lipgloss.NewStyle().Background(lipgloss.Color("24")).Foreground(lipgloss.Color("231")).Bold(true),
+		planMode:             lipgloss.NewStyle().Background(lipgloss.Color("220")).Foreground(lipgloss.Color("232")).Bold(true).Padding(0, 1),
 	}
 }
 

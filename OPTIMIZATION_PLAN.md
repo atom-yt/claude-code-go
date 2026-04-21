@@ -583,35 +583,53 @@ internal/
 
 ## 7. 分阶段实施建议
 
-## Phase 1：补架构地基
+## Phase 1：补架构地基 ✅
 
 目标：
 
-- 先解决“功能有了，但没有统一主链路”的问题
+- 先解决”功能有了，但没有统一主链路”的问题
 
-建议项：
+完成项：
 
-- 引入 prompt/context builder
-- 注入 `CLAUDE.md` / `AGENTS.md` / skills / memory
-- provider registry 化
-- 将 auto-compact、auto-dream 从 TUI 状态里拆出 service
+- ✅ 引入 prompt/context builder (`internal/prompt/`)
+- ✅ 注入 `CLAUDE.md` / `AGENTS.md` / skills / memory
+- ✅ provider registry 化 (`internal/providers/registry.go`)
+- ✅ 将 auto-compact、auto-dream 从 TUI 状态里拆出 service
+- ✅ 安全校验补强 (`internal/pathutil/`, `internal/cmdutil`, `internal/urlutil`)
 
 验收标准：
 
-- 每次请求都能稳定打印一份可解释的 assembled context 结构
+- ✅ 每次请求都能稳定打印一份可解释的 assembled context 结构
 
-## Phase 2：补执行运行时
+## Phase 2：补执行运行时 🚧 (进行中)
 
 目标：
 
 - 把 plan/task 变成真正可依赖的能力
 
-建议项：
+完成项：
 
-- real plan mode
-- durable task store
-- task-aware TUI
-- limited local subagent runtime
+- ✅ real plan mode (`internal/runtime/state.go`, `internal/tools/planmode/`)
+  - Plan/PlanStep 结构定义
+  - Plan/Implement 模式切换
+  - 计划文件持久化 (.claude/plan.md)
+  - Markdown 步骤解析
+- ✅ durable task store (`internal/taskstore/`)
+  - 文件持久化 (.claude/tasks.json)
+  - CRUD 操作与自动保存
+  - 任务依赖追踪 (Blocks/BlockedBy)
+  - Session 作用域查询
+- ✅ limited local subagent runtime (`internal/subagent/`)
+  - Explorer/Writer Worker 类型
+  - 并发 spawn 支持
+  - Stop/Cleanup 机制
+  - 竞态条件修复
+
+待完成：
+
+- ⏳ task-aware TUI
+- ⏳ runtime.State 与 TUI 集成
+- ⏳ plan mode 与工具权限关联
 
 验收标准：
 
