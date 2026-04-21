@@ -639,7 +639,7 @@ internal/
 - ✅ 一个复杂任务能拆解、批准、执行、跟踪，而不是全靠单轮上下文硬撑
 - ✅ plan mode 正确限制可用工具为只读
 
-## Phase 3：补安全与扩展 🚧 (进行中)
+## Phase 3：补安全与扩展 ✅ (已完成)
 
 目标：
 
@@ -652,10 +652,11 @@ internal/
 - ✅ MCP resources (`internal/mcpresource/`)
 - ✅ MCP HTTP transport (`internal/mcp/http_client.go`)
 - ✅ sandbox abstraction (`internal/sandbox/`)
+- ✅ plugin contract (`internal/plugin/`)
 
 待完成：
 
-- ⏳ plugin contract
+(none - Phase 3 complete!)
 
 验收标准：
 
