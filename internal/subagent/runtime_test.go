@@ -180,6 +180,7 @@ func TestRuntime_Cleanup(t *testing.T) {
 	ctx := context.Background()
 
 	execFn := func(ctx context.Context) Result {
+		time.Sleep(10 * time.Millisecond) // Small delay to ensure StartedAt is measurably before End
 		return Result{Type: "stream", Content: "output"}
 	}
 
@@ -188,26 +189,48 @@ func TestRuntime_Cleanup(t *testing.T) {
 	s2, _ := runtime.Spawn(ctx, "task-2", "test2", WorkerTypeWriter, execFn)
 
 	// Stop one
-	runtime.Stop(s1.ID)
+	err := runtime.Stop(s1.ID)
+	if err != nil {
+		t.Fatalf("Failed to stop s1: %v", err)
+	}
 
-	// Wait for both to have ended
+	// Check s1 status immediately after Stop
+	s1AfterStop, _ := runtime.Get(s1.ID)
+	t.Logf("Immediately after Stop: s1 status=%s", s1AfterStop.Status)
+
+	// Wait for both to have ended (s1 stopped, s2 completed)
 	for i := 0; i < 100; i++ {
 		time.Sleep(10 * time.Millisecond)
-		if s1.Status == "stopped" {
+		// Refresh both references to get updated status
+		s1Current, ok1 := runtime.Get(s1.ID)
+		s2Current, ok2 := runtime.Get(s2.ID)
+		if ok1 && ok2 && (i%10 == 0) {
+			t.Logf("Wait iteration %d: s1 status=%s, s2 status=%s", i, s1Current.Status, s2Current.Status)
+		}
+		if ok1 && ok2 && s1Current.Status == "stopped" && s2Current.Status == "completed" {
 			break
 		}
 	}
 
 	// Cleanup subagents older than 0 time (all of them)
 	count := runtime.Cleanup(0)
+	t.Logf("Cleanup removed %d subagents", count)
 	assert.Greater(t, count, 0)
 
 	// Both subagents should be removed
 	_, ok := runtime.Get(s1.ID)
-	assert.False(t, ok)
+	if ok {
+		s1Fresh, _ := runtime.Get(s1.ID)
+		t.Logf("s1 (ID: %s) still exists with status: %s", s1.ID, s1Fresh.Status)
+	}
+	assert.False(t, ok, "s1 should be removed")
 
 	_, ok = runtime.Get(s2.ID)
-	assert.False(t, ok)
+	if ok {
+		s2Fresh, _ := runtime.Get(s2.ID)
+		t.Logf("s2 (ID: %s) still exists with status: %s", s2.ID, s2Fresh.Status)
+	}
+	assert.False(t, ok, "s2 should be removed")
 }
 
 func TestRuntime_ConcurrentSpawn(t *testing.T) {
@@ -220,17 +243,32 @@ func TestRuntime_ConcurrentSpawn(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			execFn := func(ctx context.Context) Result {
-				return Result{Type: "stream", Content: fmt.Sprintf("task %d", i)}
+				// Block until context is done or a short delay to simulate work
+				select {
+				case <-ctx.Done():
+					return Result{Type: "error", Error: ctx.Err()}
+				case <-time.After(100 * time.Millisecond):
+					return Result{Type: "stream", Content: fmt.Sprintf("task %d", i)}
+				}
 			}
 			runtime.Spawn(ctx, "task-1", fmt.Sprintf("test%d", i), WorkerTypeExplorer, execFn)
 		}(i)
 	}
 
+	// Wait for all spawns to register
 	wg.Wait()
 	// Small delay to let goroutines set their status
 	time.Sleep(20 * time.Millisecond)
 
+	// Should have 10 running subagents (they're all blocked for 100ms)
 	assert.Equal(t, 10, runtime.GetSubagentCount())
+
+	// Wait for all to complete
+	time.Sleep(150 * time.Millisecond)
+
+	// All should be completed now
+	assert.Equal(t, 0, runtime.GetSubagentCount())
+	assert.Len(t, runtime.List(""), 10) // Still in registry
 }
 
 func TestSubagent_Status(t *testing.T) {

@@ -118,31 +118,57 @@ func (r *Runtime) Spawn(ctx context.Context, taskID, prompt string, workerType W
 		defer close(subagent.outputCh)
 		defer close(subagent.resultCh)
 
+		// Check if context was already cancelled (e.g., by Stop() before we started)
+		select {
+		case <-workerCtx.Done():
+			// Context cancelled before we could start
+			// Stop() will have set status to "stopped"
+			return
+		default:
+		}
+
 		subagent.mu.Lock()
 		subagent.Status = "running"
 		subagent.StartedAt = time.Now()
 		subagent.mu.Unlock()
 
+		// Check again before executing
+		select {
+		case <-workerCtx.Done():
+			// Context cancelled just as we were starting
+			// Stop() will have set status to "stopped"
+			return
+		default:
+		}
+
 		// Execute the worker function
 		result := execFn(workerCtx)
 
-		// Set end time and final status
-		now := time.Now()
-		subagent.mu.Lock()
-		subagent.EndedAt = now
-		if result.Error == nil {
-			subagent.Status = "completed"
-		} else {
-			subagent.Status = "failed"
-		}
-		subagent.mu.Unlock()
+		// Check if context was cancelled (subagent was stopped)
+		select {
+		case <-workerCtx.Done():
+			// Subagent was stopped by user, don't override status
+			// The Stop() method already set status to "stopped"
+			return
+		default:
+			// Normal completion, set final status
+			now := time.Now()
+			subagent.mu.Lock()
+			subagent.EndedAt = now
+			if result.Error == nil {
+				subagent.Status = "completed"
+			} else {
+				subagent.Status = "failed"
+			}
+			subagent.mu.Unlock()
 
-		// Send result
-		subagent.resultCh <- FinalResult{
-			Success:    result.Error == nil,
-			Output:     result.Content,
-			Error:       result.Error,
-			CompletedAt: now,
+			// Send result
+			subagent.resultCh <- FinalResult{
+				Success:    result.Error == nil,
+				Output:     result.Content,
+				Error:       result.Error,
+				CompletedAt: now,
+			}
 		}
 	}()
 
@@ -185,6 +211,10 @@ func (r *Runtime) Stop(id string) error {
 		return fmt.Errorf("subagent not found: %s", id)
 	}
 
+	// Use subagent's own mutex for status update
+	subagent.mu.Lock()
+	defer subagent.mu.Unlock()
+
 	if subagent.Status == "stopped" || subagent.Status == "completed" {
 		return fmt.Errorf("subagent already stopped: %s", id)
 	}
@@ -195,6 +225,7 @@ func (r *Runtime) Stop(id string) error {
 	}
 
 	subagent.Status = "stopped"
+	subagent.EndedAt = time.Now()
 
 	// Don't remove from registry - keep it for querying status
 	// Subagent can be cleaned up later via Cleanup()
@@ -236,14 +267,26 @@ func (r *Runtime) Cleanup(olderThan time.Duration) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	cutoff := time.Now().Add(-olderThan)
 	count := 0
 
 	for id, sub := range r.subagents {
 		if sub.Status == "stopped" || sub.Status == "completed" {
-			if sub.EndedAt.Before(cutoff) || sub.StartedAt.Before(cutoff) {
+			if olderThan <= 0 {
+				// Zero or negative duration: clean up all completed/stopped subagents
 				delete(r.subagents, id)
 				count++
+			} else {
+				// Positive duration: clean up only those older than cutoff
+				cutoff := time.Now().Add(-olderThan)
+				// Use StartedAt or EndedAt, whichever is earlier
+				earliestTime := sub.StartedAt
+				if !sub.EndedAt.IsZero() && sub.EndedAt.Before(sub.StartedAt) {
+					earliestTime = sub.EndedAt
+				}
+				if earliestTime.Before(cutoff) {
+					delete(r.subagents, id)
+					count++
+				}
 			}
 		}
 	}
