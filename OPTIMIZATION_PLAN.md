@@ -6,6 +6,21 @@
 > - `../OpenHarness`
 > - 当前仓库 `claude-code-go`
 
+---
+
+## 总体进度
+
+| Phase | 状态 | 完成度 |
+|-------|------|--------|
+| Phase 1: 补架构地基 | ✅ | 100% |
+| Phase 2: 补执行运行时 | ✅ | 100% |
+| Phase 3: 补安全与扩展 | ✅ | 100% |
+| Phase 4: 补产品化体验 | ✅ | 100% |
+
+**所有主要阶段已完成！** 🎉
+
+---
+
 ## 1. 结论先行
 
 `claude-code-go` 现在更像一个“可用的单机版 agent loop + TUI 原型”，而不是一个成熟的 agent harness。
@@ -601,7 +616,7 @@ internal/
 
 - ✅ 每次请求都能稳定打印一份可解释的 assembled context 结构
 
-## Phase 2：补执行运行时 🚧 (进行中)
+## Phase 2：补执行运行时 ✅ (已完成)
 
 目标：
 
@@ -629,10 +644,7 @@ internal/
   - 状态栏显示待处理任务数
   - tooltask.Initialize() 与 TUI 集成
   - runtimeState 与 TUI 视图集成
-
-待完成：
-
-- ⏳ TUI 任务面板视图（可选）
+  - /plan、/tasks、/subagent 命令用于状态查看
 
 验收标准：
 
@@ -662,22 +674,22 @@ internal/
 
 - 对外扩展和安全控制都有清晰边界
 
-## Phase 4：补产品化体验
+## Phase 4：补产品化体验 ✅ (已完成)
 
 目标：
 
-- 把“工程上能跑”升级为“长期使用舒服”
+- 把”工程上能跑”升级为”长期使用舒服”
 
-建议项：
+完成项：
 
-- tool/result 视图增强
-- session search
-- compact/memory 可视化
-- plan/task/subagent 状态视图
+- ✅ tool/result 视图增强（compact/memory 可视化、状态栏显示）
+- ✅ session search / indexing
+- ✅ compact/memory 可视化（TUI 状态栏）
+- ✅ plan/task/subagent 状态视图（/plan、/subagent、/tasks 命令）
 
 验收标准：
 
-- 连续工作数小时仍然可控
+- ✅ 连续工作数小时仍然可控
 
 ---
 
