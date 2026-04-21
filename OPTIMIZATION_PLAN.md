@@ -639,18 +639,22 @@ internal/
 - ✅ 一个复杂任务能拆解、批准、执行、跟踪，而不是全靠单轮上下文硬撑
 - ✅ plan mode 正确限制可用工具为只读
 
-## Phase 3：补安全与扩展
+## Phase 3：补安全与扩展 🚧 (进行中)
 
 目标：
 
 - 让系统更稳、更可扩展
 
-建议项：
+已完成：
 
-- bash/path/url guard
-- sandbox abstraction
-- MCP resources + HTTP transport
-- plugin contract
+- ✅ bash/path guard (`internal/cmdutil/`, `internal/pathutil/`)
+- ✅ url guard (`internal/urlutil/`)
+
+待完成：
+
+- ⏳ sandbox abstraction
+- ⏳ MCP resources + HTTP transport
+- ⏳ plugin contract
 
 验收标准：
 
@@ -677,27 +681,27 @@ internal/
 
 ## 8. 建议优先级
 
-### P0：必须先做
+### P0：必须先做 ✅
 
-- prompt/context builder
-- project instructions 注入
-- compact/memory 服务化
-- provider registry
-- 安全校验补强
+- ✅ prompt/context builder
+- ✅ project instructions 注入
+- ✅ compact/memory 服务化
+- ✅ provider registry
+- ✅ 安全校验补强（pathutil、cmdutil、urlutil）
 
-### P1：很值得紧接着做
+### P1：很值得紧接着做 ✅
 
-- real plan mode
-- durable task system
-- 轻量 subagent runtime
-- MCP resources / HTTP transport
+- ✅ real plan mode
+- ✅ durable task system
+- ✅ 轻量 subagent runtime
+- ⏳ MCP resources / HTTP transport
 
-### P2：做完会明显加分
+### P2：做完会明显加分 🚧
 
-- plugin contract
-- session search / indexing
-- richer TUI panels
-- 模型能力感知与智能路由
+- ⏳ plugin contract
+- ⏳ session search / indexing
+- ⏳ richer TUI panels（已完成状态栏显示）
+- ⏳ 模型能力感知与智能路由
 
 ### P3：先不要急
 
