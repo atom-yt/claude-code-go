@@ -9,6 +9,9 @@ import (
 // Returns (true, "") to allow, (false, reason) to deny.
 type AskFn func(ctx context.Context, req AskRequest) (bool, string)
 
+// IsPlanModeFn returns true if the agent is currently in plan mode.
+type IsPlanModeFn func() bool
+
 // Checker evaluates permission rules for tool calls.
 type Checker struct {
 	Mode       Mode
@@ -20,6 +23,9 @@ type Checker struct {
 	// AskFn is required when Mode == ModeManual or AskRules are configured.
 	// If nil, unknown calls are denied.
 	AskFn AskFn
+	// IsPlanModeFn returns true if the agent is in plan mode.
+	// When in plan mode, only read-only tools are allowed.
+	IsPlanModeFn IsPlanModeFn
 }
 
 // New creates a Checker with the given mode and empty rule lists.
@@ -30,6 +36,15 @@ func New(mode Mode) *Checker {
 // Check evaluates whether a tool call is permitted.
 // Priority: Deny > Allow > Ask > Mode default.
 func (c *Checker) Check(ctx context.Context, toolName string, input map[string]any) (Decision, error) {
+	// Check plan mode restriction first (highest priority)
+	if c.IsPlanModeFn != nil && c.IsPlanModeFn() {
+		if !c.isPlanModeAllowedTool(toolName) {
+			return Decision{
+				Allowed: false,
+				Reason: fmt.Sprintf("tool not allowed in plan mode: %q", toolName),
+			}, nil
+		}
+	}
 	// trust-all: skip all checks
 	if c.Mode == ModeTrustAll {
 		return Decision{Allowed: true}, nil
@@ -145,4 +160,19 @@ func splitMCPToolName(name string) []string {
 
 func ruleDesc(r Rule) string {
 	return fmt.Sprintf("ask rule: tool=%q path=%q command=%q", r.Tool, r.Path, r.Command)
+}
+
+// isPlanModeAllowedTool returns true if a tool is allowed in plan mode.
+// Plan mode allows only read-only and planning-related tools.
+func (c *Checker) isPlanModeAllowedTool(name string) bool {
+	// Allow read-only tools
+	if c.isReadOnlyTool(name) {
+		return true
+	}
+	// Allow planning-specific tools
+	switch name {
+	case "EnterPlanMode", "ExitPlanMode", "TaskCreate", "TaskGet", "TaskList", "TaskUpdate":
+		return true
+	}
+	return false
 }

@@ -530,6 +530,11 @@ func buildChecker(cfg config.PermissionsConfig, m *Model, mcpServers map[string]
 		checker.AskRules = append(checker.AskRules, permissions.Rule{Tool: r.Tool, Path: r.Path, Command: r.Command})
 	}
 
+	// Set IsPlanModeFn to check runtime state
+	if m.runtimeState != nil {
+		checker.IsPlanModeFn = m.runtimeState.IsPlanMode
+	}
+
 	checker.AskFn = func(ctx context.Context, req permissions.AskRequest) (bool, string) {
 		replyCh := make(chan bool, 1)
 
