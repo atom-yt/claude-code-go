@@ -7,9 +7,19 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
+// MCPCallTool defines the interface for MCP clients that can be used for tool registration.
+type MCPCallTool interface {
+	CallTool(ctx context.Context, name string, args map[string]any) (string, bool, error)
+	Name() string
+	TrustLevel() string
+	GetTools() []ToolDef
+	ListResources(ctx context.Context) ([]ResourceDef, error)
+	ReadResource(ctx context.Context, uri string) (string, error)
+}
+
 // mcpTool wraps an MCP server tool as a tools.Tool.
 type mcpTool struct {
-	client *Client
+	client MCPCallTool
 	def    ToolDef
 	name   string // prefixed: mcp__<server>__<name>
 	trust  string // Trust level of the MCP server
@@ -42,14 +52,14 @@ func (t *mcpTool) Call(ctx context.Context, input map[string]any) (tools.ToolRes
 
 // RegisterTools adds all tools from the MCP client into the registry,
 // prefixed with "mcp__<serverName>__".
-func RegisterTools(registry *tools.Registry, client *Client) {
-	for _, def := range client.Tools {
-		prefixed := fmt.Sprintf("mcp__%s__%s", client.name, def.Name)
+func RegisterTools(registry *tools.Registry, client MCPCallTool) {
+	for _, def := range client.GetTools() {
+		prefixed := fmt.Sprintf("mcp__%s__%s", client.Name(), def.Name)
 		registry.Register(&mcpTool{
 			client: client,
 			def:    def,
 			name:   prefixed,
-			trust:  client.trust,
+			trust:  client.TrustLevel(),
 		})
 	}
 }

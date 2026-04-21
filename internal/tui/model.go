@@ -18,6 +18,7 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/config"
 	"github.com/atom-yt/claude-code-go/internal/hooks"
 	"github.com/atom-yt/claude-code-go/internal/mcp"
+	"github.com/atom-yt/claude-code-go/internal/mcpresource"
 	"github.com/atom-yt/claude-code-go/internal/memory"
 	"github.com/atom-yt/claude-code-go/internal/permissions"
 	"github.com/atom-yt/claude-code-go/internal/prompt"
@@ -149,6 +150,7 @@ type Model struct {
 	runtimeState   *runtime.State
 	taskManager     *taskstore.Store
 	subagentRuntime *subagent.Runtime
+	mcpClients      *map[string]mcp.MCPCallTool
 
 	// Spinner animation frame index.
 	spinnerIdx int
@@ -282,7 +284,18 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		registry := buildRegistry(m.runtimeState)
 
 		// Connect MCP servers and register their tools.
-		connectMCPServers(context.Background(), settings.MCPServers, registry)
+		m.mcpClients = connectMCPServers(context.Background(), settings.MCPServers, registry)
+
+		// Register MCP resource tools if servers are connected.
+		if m.mcpClients != nil && len(*m.mcpClients) > 0 {
+			listResTool := &mcpresource.ListMcpResourcesTool{}
+			listResTool.SetClients(m.mcpClients)
+			registry.Register(listResTool)
+
+			readResTool := &mcpresource.ReadMcpResourceTool{}
+			readResTool.SetClients(m.mcpClients)
+			registry.Register(readResTool)
+		}
 
 		// Register Skill tool if skills are available.
 		if m.skillRegistry != nil && len(m.skillRegistry.List()) > 0 {
@@ -432,31 +445,45 @@ func buildRegistry(state *runtime.State) *tools.Registry {
 
 // connectMCPServers connects to all configured MCP servers concurrently
 // and registers their tools into the registry.
-func connectMCPServers(ctx context.Context, servers map[string]config.MCPServerConfig, registry *tools.Registry) {
+// Returns a map of connected clients (may be nil if no servers).
+func connectMCPServers(ctx context.Context, servers map[string]config.MCPServerConfig, registry *tools.Registry) *map[string]mcp.MCPCallTool {
 	if len(servers) == 0 {
-		return
+		return nil
 	}
 	type result struct {
 		name   string
-		client *mcp.Client
+		client mcp.MCPCallTool
 		err    error
 	}
 	ch := make(chan result, len(servers))
+	clients := make(map[string]mcp.MCPCallTool)
 
 	for name, cfg := range servers {
 		name, cfg := name, cfg
 		go func() {
-			if cfg.Type != "stdio" && cfg.Type != "" {
-				ch <- result{name: name, err: fmt.Errorf("unsupported MCP transport: %q", cfg.Type)}
-				return
-			}
 			// Default trust level is "untrusted" if not specified
 			trust := cfg.Trust
 			if trust == "" {
 				trust = config.TrustUntrusted
 			}
-			c, err := mcp.ConnectStdio(ctx, name, trust, cfg.Command, cfg.Args, cfg.Env)
-			ch <- result{name: name, client: c, err: err}
+
+			var client mcp.MCPCallTool
+			var err error
+
+			switch cfg.Type {
+			case "", "stdio":
+				client, err = mcp.ConnectStdio(ctx, name, trust, cfg.Command, cfg.Args, cfg.Env)
+			case "http", "sse":
+				if cfg.URL == "" {
+					err = fmt.Errorf("http/sse transport requires 'url' field")
+				} else {
+					client, err = mcp.ConnectHTTP(ctx, name, trust, cfg.URL)
+				}
+			default:
+				err = fmt.Errorf("unsupported MCP transport: %q", cfg.Type)
+			}
+
+			ch <- result{name: name, client: client, err: err}
 		}()
 	}
 
@@ -464,10 +491,16 @@ func connectMCPServers(ctx context.Context, servers map[string]config.MCPServerC
 		r := <-ch
 		if r.err != nil {
 			// Log to stderr silently; don't crash TUI.
+			fmt.Fprintf(os.Stderr, "MCP server %q failed: %v\n", r.name, r.err)
 			continue
 		}
 		mcp.RegisterTools(registry, r.client)
+		clients[r.name] = r.client
 	}
+	if len(clients) == 0 {
+		return nil
+	}
+	return &clients
 }
 
 // buildExecutor converts config hook definitions into a hooks.Executor.

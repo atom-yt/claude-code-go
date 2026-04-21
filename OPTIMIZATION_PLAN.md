@@ -649,11 +649,12 @@ internal/
 
 - ✅ bash/path guard (`internal/cmdutil/`, `internal/pathutil/`)
 - ✅ url guard (`internal/urlutil/`)
+- ✅ MCP resources (`internal/mcpresource/`)
+- ✅ MCP HTTP transport (`internal/mcp/http_client.go`)
 
 待完成：
 
 - ⏳ sandbox abstraction
-- ⏳ MCP resources + HTTP transport
 - ⏳ plugin contract
 
 验收标准：
@@ -694,7 +695,8 @@ internal/
 - ✅ real plan mode
 - ✅ durable task system
 - ✅ 轻量 subagent runtime
-- ⏳ MCP resources / HTTP transport
+- ✅ MCP resources
+- ✅ MCP HTTP transport
 
 ### P2：做完会明显加分 🚧
 

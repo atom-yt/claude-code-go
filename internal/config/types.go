@@ -58,12 +58,12 @@ type HookMatcherConfig struct {
 
 // MCPServerConfig describes how to connect to one MCP server.
 type MCPServerConfig struct {
-	Type    string            `json:"type"`    // "stdio" | "sse" (sse not implemented yet)
+	Type    string            `json:"type"`    // "stdio" (default) | "http" | "sse"
 	Command string            `json:"command"` // for stdio: executable
 	Args    []string          `json:"args"`    // for stdio: arguments
 	Env     []string          `json:"env"`     // extra env vars ("KEY=VALUE")
-	URL     string            `json:"url"`     // for sse
-	Headers map[string]string `json:"headers"` // for sse
+	URL     string            `json:"url"`     // for http/sse: base URL
+	Headers map[string]string `json:"headers"` // for http/sse: custom headers (not implemented yet)
 	Trust   string            `json:"trust"`   // "full" | "limited" | "untrusted" (default: "untrusted")
 }
 

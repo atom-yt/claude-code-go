@@ -84,6 +84,30 @@ func (c *Client) Close() {
 	}
 }
 
+// Name returns the client's name.
+func (c *Client) Name() string {
+	return c.name
+}
+
+// TrustLevel returns the client's trust level.
+func (c *Client) TrustLevel() string {
+	return c.trust
+}
+
+// GetTools returns the list of tools exposed by the MCP server.
+func (c *Client) GetTools() []ToolDef {
+	return c.Tools
+}
+
+// ListResources returns all resources exposed by the MCP server.
+func (c *Client) ListResources(ctx context.Context) ([]ResourceDef, error) {
+	var result resourcesListResult
+	if err := c.call(ctx, "resources/list", nil, &result); err != nil {
+		return nil, err
+	}
+	return result.Resources, nil
+}
+
 // CallTool invokes a tool on the MCP server and returns its text output.
 func (c *Client) CallTool(ctx context.Context, name string, args map[string]any) (string, bool, error) {
 	params := toolsCallParams{Name: name, Arguments: args}
@@ -123,15 +147,6 @@ func (c *Client) listTools(ctx context.Context) error {
 	}
 	c.Tools = result.Tools
 	return nil
-}
-
-// ListResources returns all resources exposed by the MCP server.
-func (c *Client) ListResources(ctx context.Context) ([]ResourceDef, error) {
-	var result resourcesListResult
-	if err := c.call(ctx, "resources/list", nil, &result); err != nil {
-		return nil, err
-	}
-	return result.Resources, nil
 }
 
 // ReadResource reads the content of a resource by URI.
