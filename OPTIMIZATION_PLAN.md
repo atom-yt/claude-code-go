@@ -624,12 +624,17 @@ internal/
   - 并发 spawn 支持
   - Stop/Cleanup 机制
   - 竞态条件修复
+- ✅ task-aware TUI (`internal/tui/`)
+  - 状态栏显示 plan mode 指示器
+  - 状态栏显示待处理任务数
+  - tooltask.Initialize() 与 TUI 集成
+  - runtimeState 与 TUI 视图集成
 
 待完成：
 
-- ⏳ task-aware TUI
-- ⏳ runtime.State 与 TUI 集成
-- ⏳ plan mode 与工具权限关联
+- ⏳ plan mode 与工具权限关联（限制可用工具）
+- ⏳ TUI 任务面板视图
+- ⏳ /tasks 斜杠命令显示任务列表
 
 验收标准：
 
