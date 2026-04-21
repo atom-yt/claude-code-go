@@ -1,164 +1,244 @@
-// Package task implements Task tools for managing background tasks and sub-agents.
-// These tools enable the agent to manage a queue of background tasks, track their
-// progress, and retrieve their results.
 package task
 
 import (
 	"fmt"
-	"sync"
-	"time"
+
+	"github.com/atom-yt/claude-code-go/internal/taskstore"
 )
 
-// Task status constants
-const (
-	StatusPending    = "pending"
-	StatusInProgress = "in_progress"
-	StatusCompleted  = "completed"
-	StatusDeleted    = "deleted"
+var (
+	// Global task manager instance
+	globalManager *Manager
 )
 
-// TaskStatus represents the status of a task.
+// TaskStatus represents the current status of a task.
 type TaskStatus string
 
-// Task represents a single task in the task list.
+const (
+	StatusPending    TaskStatus = "pending"
+	StatusInProgress TaskStatus = "in_progress"
+	StatusCompleted  TaskStatus = "completed"
+	StatusBlocked    TaskStatus = "blocked"
+	StatusDeleted   TaskStatus = "deleted"
+)
+
+// Task represents a single task with metadata.
 type Task struct {
-	ID          string                 `json:"id"`
-	Subject     string                 `json:"subject"`
-	Description string                 `json:"description"`
-	Status      TaskStatus             `json:"status"`
-	ActiveForm  string                 `json:"activeForm,omitempty"`
-	Owner       string                 `json:"owner,omitempty"`
-	Blocks      []string               `json:"blocks,omitempty"`    // Task IDs this task blocks
-	BlockedBy   []string               `json:"blockedBy,omitempty"` // Task IDs blocking this task
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`  // Additional metadata
-	CreatedAt   time.Time              `json:"createdAt"`
-	UpdatedAt   time.Time              `json:"updatedAt"`
+	ID          string       `json:"id"`
+	Subject     string       `json:"subject"`
+	Description string       `json:"description"`
+	Status      TaskStatus   `json:"status"`
+	ActiveForm  string       `json:"activeForm,omitempty"`
+	Owner       string       `json:"owner,omitempty"`
+	CreatedAt   string       `json:"createdAt"`
+	UpdatedAt   string       `json:"updatedAt"`
+
+	// Task dependencies
+	Blocks     []string `json:"blocks,omitempty"`    // Task IDs blocked by this task
+	BlockedBy   []string `json:"blockedBy,omitempty"` // Task IDs this task depends on
+
+	// Custom metadata
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
-// TaskManager manages all tasks.
-type TaskManager struct {
-	mu     sync.RWMutex
-	tasks  map[string]*Task
-	nextID int
+// Manager provides a task management interface backed by a durable store.
+type Manager struct {
+	store *taskstore.Store
 }
 
-// Global task manager instance
-var globalManager = &TaskManager{
-	tasks:  make(map[string]*Task),
-	nextID: 1,
-}
-
-// GetManager returns the global task manager.
-func GetManager() *TaskManager {
+// GetManager returns the global task manager instance.
+func GetManager() *Manager {
+	if globalManager == nil {
+		globalManager = &Manager{}
+	}
 	return globalManager
 }
 
-// Create creates a new task.
-func (tm *TaskManager) Create(subject, description, activeForm string) *Task {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
+// Initialize initializes the task manager with a workspace root.
+// This should be called during TUI initialization.
+func Initialize(workspaceRoot string) error {
+	if globalManager == nil {
+		globalManager = &Manager{}
+	}
+	store, err := taskstore.New(workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("failed to initialize task store: %w", err)
+	}
+	globalManager.store = store
+	return nil
+}
 
-	task := &Task{
-		ID:          fmt.Sprintf("%d", tm.nextID),
-		Subject:     subject,
-		Description: description,
-		Status:      StatusPending,
-		ActiveForm:  activeForm,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		Metadata:    make(map[string]interface{}),
+// Create creates a new task.
+func (m *Manager) Create(subject, description, activeForm string) *Task {
+	if m.store == nil {
+		return &Task{
+			ID:          "pending",
+			Subject:     subject,
+			Description: description,
+			Status:      StatusPending,
+			CreatedAt:   "now",
+			UpdatedAt:   "now",
+		}
 	}
 
-	tm.tasks[task.ID] = task
-	tm.nextID++
-	return task
+	storeTask, err := m.store.Create(subject, description)
+	if err != nil {
+		return &Task{
+			ID:          "error",
+			Subject:     subject,
+			Description: fmt.Sprintf("Error creating task: %v", err),
+			Status:      StatusPending,
+		}
+	}
+
+	if activeForm != "" {
+		_ = m.store.Update(storeTask.ID, map[string]any{"activeForm": activeForm})
+		storeTask, _ = m.store.Get(storeTask.ID)
+	}
+
+	return toTask(storeTask)
 }
 
 // Get retrieves a task by ID.
-func (tm *TaskManager) Get(id string) (*Task, bool) {
-	tm.mu.RLock()
-	defer tm.mu.RUnlock()
-	task, ok := tm.tasks[id]
-	return task, ok
+func (m *Manager) Get(id string) (*Task, bool) {
+	if m.store == nil {
+		return nil, false
+	}
+
+	storeTask, ok := m.store.Get(id)
+	if !ok {
+		return nil, false
+	}
+	return toTask(storeTask), true
 }
 
 // List returns all tasks.
-func (tm *TaskManager) List() []*Task {
-	tm.mu.RLock()
-	defer tm.mu.RUnlock()
+func (m *Manager) List() []*Task {
+	if m.store == nil {
+		return []*Task{}
+	}
 
-	tasks := make([]*Task, 0, len(tm.tasks))
-	for _, t := range tm.tasks {
-		tasks = append(tasks, t)
+	storeTasks := m.store.List("", "")
+	tasks := make([]*Task, len(storeTasks))
+	for i, st := range storeTasks {
+		tasks[i] = toTask(st)
 	}
 	return tasks
 }
 
-// Update updates a task's status and optionally other fields.
-func (tm *TaskManager) Update(id string, updates func(*Task)) (*Task, error) {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	task, ok := tm.tasks[id]
-	if !ok {
-		return nil, fmt.Errorf("task not found: %s", id)
+// Update updates a task with the given function.
+func (m *Manager) Update(id string, fn func(*Task)) error {
+	if m.store == nil {
+		return fmt.Errorf("task store not initialized")
 	}
 
-	updates(task)
-	task.UpdatedAt = time.Now()
-	return task, nil
-}
-
-// Delete marks a task as deleted.
-func (tm *TaskManager) Delete(id string) error {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	if _, ok := tm.tasks[id]; !ok {
+	task, ok := m.store.Get(id)
+	if !ok {
 		return fmt.Errorf("task not found: %s", id)
 	}
-	delete(tm.tasks, id)
-	return nil
+
+	// Convert to manager Task type
+	mgrTask := toTask(task)
+
+	// Apply user function
+	fn(mgrTask)
+
+	// Convert updates back to store
+	updates := make(map[string]any)
+	if mgrTask.Subject != "" && mgrTask.Subject != task.Subject {
+		updates["subject"] = mgrTask.Subject
+	}
+	if mgrTask.Description != "" && mgrTask.Description != task.Description {
+		updates["description"] = mgrTask.Description
+	}
+	if string(mgrTask.Status) != string(task.Status) {
+		// Convert to taskstore.TaskStatus
+		updates["status"] = taskstore.TaskStatus(mgrTask.Status)
+	}
+	if mgrTask.ActiveForm != "" && mgrTask.ActiveForm != task.ActiveForm {
+		updates["activeForm"] = mgrTask.ActiveForm
+	}
+
+	return m.store.Update(id, updates)
 }
 
-// AddBlock adds a task ID to the blocks list.
-// This also adds the taskID to the blockedBy list of the blocksID task.
-func (tm *TaskManager) AddBlock(taskID, blocksID string) {
-	_, _ = tm.Update(taskID, func(t *Task) {
-		for _, b := range t.Blocks {
-			if b == blocksID {
-				return
-			}
-		}
-		t.Blocks = append(t.Blocks, blocksID)
-	})
-	_, _ = tm.Update(blocksID, func(t *Task) {
-		for _, b := range t.BlockedBy {
-			if b == taskID {
-				return
-			}
-		}
-		t.BlockedBy = append(t.BlockedBy, taskID)
-	})
+// Delete deletes a task.
+func (m *Manager) Delete(id string) error {
+	if m.store == nil {
+		return fmt.Errorf("task store not initialized")
+	}
+	return m.store.Delete(id)
 }
 
-// AddBlockedBy adds a task ID to the blockedBy list.
-// This also adds the taskID to the blocks list of the blockedByID task.
-func (tm *TaskManager) AddBlockedBy(taskID, blockedByID string) {
-	_, _ = tm.Update(taskID, func(t *Task) {
-		for _, b := range t.BlockedBy {
-			if b == blockedByID {
-				return
-			}
+// AddBlock adds a blocking relationship (task blocks otherTaskID).
+func (m *Manager) AddBlock(taskID, otherTaskID string) {
+	if m.store == nil {
+		return
+	}
+
+	task, ok := m.store.Get(taskID)
+	if ok {
+		blocks := append(task.Blocks, otherTaskID)
+		_ = m.store.SetBlocks(taskID, blocks)
+	}
+
+	// Add reverse dependency
+	otherTask, ok := m.store.Get(otherTaskID)
+	if ok {
+		blockedBy := append(otherTask.BlockedBy, taskID)
+		_ = m.store.SetBlockedBy(otherTaskID, blockedBy)
+	}
+}
+
+// AddBlockedBy adds a dependency relationship (task depends on otherTaskID).
+func (m *Manager) AddBlockedBy(taskID, otherTaskID string) {
+	if m.store == nil {
+		return
+	}
+
+	task, ok := m.store.Get(taskID)
+	if ok {
+		blockedBy := append(task.BlockedBy, otherTaskID)
+		_ = m.store.SetBlockedBy(taskID, blockedBy)
+	}
+
+	// Add reverse dependency
+	otherTask, ok := m.store.Get(otherTaskID)
+	if ok {
+		blocks := append(otherTask.Blocks, taskID)
+		_ = m.store.SetBlocks(otherTaskID, blocks)
+	}
+}
+
+// SetOwner sets the owner of a task.
+func (m *Manager) SetOwner(taskID, owner string) error {
+	if m.store == nil {
+		return fmt.Errorf("task store not initialized")
+	}
+	return m.store.SetMetadata(taskID, map[string]any{"owner": owner})
+}
+
+// toTask converts a taskstore.Task to a manager Task.
+func toTask(st *taskstore.Task) *Task {
+	metadata := st.Metadata
+	owner := ""
+	if metadata != nil {
+		if o, ok := metadata["owner"].(string); ok {
+			owner = o
 		}
-		t.BlockedBy = append(t.BlockedBy, blockedByID)
-	})
-	_, _ = tm.Update(blockedByID, func(t *Task) {
-		for _, b := range t.Blocks {
-			if b == taskID {
-				return
-			}
-		}
-		t.Blocks = append(t.Blocks, taskID)
-	})
+	}
+
+	return &Task{
+		ID:          st.ID,
+		Subject:     st.Subject,
+		Description: st.Description,
+		Status:      TaskStatus(st.Status),
+		ActiveForm:  st.ActiveForm,
+		Owner:       owner,
+		CreatedAt:   st.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:   st.UpdatedAt.Format("2006-01-02 15:04:05"),
+		Blocks:      st.Blocks,
+		BlockedBy:   st.BlockedBy,
+		Metadata:    metadata,
+	}
 }

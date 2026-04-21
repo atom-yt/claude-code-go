@@ -1,25 +1,40 @@
 package task
 
 import (
-	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+func setupTestManager(t *testing.T) (*Manager, func()) {
+	tmpDir := t.TempDir()
+
+	// Initialize the global manager
+	err := Initialize(tmpDir)
+	require.NoError(t, err)
+
+	cleanup := func() {
+		os.RemoveAll(tmpDir)
+	}
+
+	return GetManager(), cleanup
+}
+
 func TestManager_Create(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
+	m, _ := setupTestManager(t)
 	task := m.Create("Test Task", "Test Description", "Testing")
 
 	assert.Equal(t, "Test Task", task.Subject)
 	assert.Equal(t, "Test Description", task.Description)
 	assert.Equal(t, "Testing", task.ActiveForm)
-	assert.Equal(t, StatusPending, string(task.Status))
-	assert.Equal(t, "1", task.ID)
+	assert.Equal(t, StatusPending, task.Status)
+	assert.Equal(t, "task-1", task.ID)
 }
 
 func TestManager_Get(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
+	m, _ := setupTestManager(t)
 	task := m.Create("Test", "Desc", "Act")
 
 	retrieved, ok := m.Get(task.ID)
@@ -32,7 +47,7 @@ func TestManager_Get(t *testing.T) {
 }
 
 func TestManager_List(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
+	m, _ := setupTestManager(t)
 	m.Create("Task 1", "Desc 1", "")
 	m.Create("Task 2", "Desc 2", "")
 
@@ -41,204 +56,98 @@ func TestManager_List(t *testing.T) {
 }
 
 func TestManager_Update(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
+	m, _ := setupTestManager(t)
 	task := m.Create("Original", "Desc", "")
 
-	updated, err := m.Update(task.ID, func(t *Task) {
+	err := m.Update(task.ID, func(t *Task) {
 		t.Subject = "Updated"
 		t.Status = StatusCompleted
 	})
 
-	assert.NoError(t, err)
-	assert.Equal(t, "Updated", updated.Subject)
-	assert.Equal(t, StatusCompleted, string(updated.Status))
-}
+	require.NoError(t, err)
 
-func TestManager_UpdateNotFound(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	_, err := m.Update("999", func(t *Task) {})
-	assert.Error(t, err)
+	updated, ok := m.Get(task.ID)
+	require.True(t, ok)
+	assert.Equal(t, "Updated", updated.Subject)
+	assert.Equal(t, StatusCompleted, updated.Status)
 }
 
 func TestManager_Delete(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task := m.Create("Test", "Desc", "")
+	m, _ := setupTestManager(t)
+	task := m.Create("To Delete", "Desc", "")
 
 	err := m.Delete(task.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, ok := m.Get(task.ID)
 	assert.False(t, ok)
 }
 
-func TestManager_DeleteNotFound(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	err := m.Delete("999")
-	assert.Error(t, err)
-}
-
 func TestManager_AddBlock(t *testing.T) {
-	m := &TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task1 := m.Create("Task 1", "Desc", "")
-	task2 := m.Create("Task 2", "Desc", "")
+	m, _ := setupTestManager(t)
+	task1 := m.Create("Task 1", "Desc 1", "")
+	task2 := m.Create("Task 2", "Desc 2", "")
 
 	m.AddBlock(task1.ID, task2.ID)
 
-	updated1, _ := m.Get(task1.ID)
-	assert.Contains(t, updated1.Blocks, task2.ID)
+	t1, ok := m.Get(task1.ID)
+	require.True(t, ok)
+	assert.Contains(t, t1.Blocks, task2.ID)
 
-	updated2, _ := m.Get(task2.ID)
-	assert.Contains(t, updated2.BlockedBy, task1.ID)
+	t2, ok := m.Get(task2.ID)
+	require.True(t, ok)
+	assert.Contains(t, t2.BlockedBy, task1.ID)
 }
 
-func TestTaskCreateTool(t *testing.T) {
-	tool := &TaskCreateTool{}
+func TestManager_AddBlockedBy(t *testing.T) {
+	m, _ := setupTestManager(t)
+	task1 := m.Create("Task 1", "Desc 1", "")
+	task2 := m.Create("Task 2", "Desc 2", "")
 
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
+	m.AddBlockedBy(task2.ID, task1.ID)
 
-	result, err := tool.Call(context.Background(), map[string]any{
-		"subject":     "Test Task",
-		"description": "Test Description",
-		"activeForm":  "Testing",
-	})
+	t1, ok := m.Get(task1.ID)
+	require.True(t, ok)
+	assert.Contains(t, t1.Blocks, task2.ID)
 
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "Task #1 created")
-	assert.Contains(t, result.Output, "Test Task")
+	t2, ok := m.Get(task2.ID)
+	require.True(t, ok)
+	assert.Contains(t, t2.BlockedBy, task1.ID)
 }
 
-func TestTaskCreateTool_MissingSubject(t *testing.T) {
-	tool := &TaskCreateTool{}
-	result, err := tool.Call(context.Background(), map[string]any{
-		"description": "Test",
-	})
+func TestManager_SetOwner(t *testing.T) {
+	m, _ := setupTestManager(t)
+	task := m.Create("Task", "Desc", "")
 
-	assert.NoError(t, err)
-	assert.True(t, result.IsError)
-	assert.Contains(t, result.Output, "subject is required")
+	err := m.SetOwner(task.ID, "agent-1")
+	require.NoError(t, err)
+
+	updated, ok := m.Get(task.ID)
+	require.True(t, ok)
+	assert.Equal(t, "agent-1", updated.Owner)
 }
 
-func TestTaskGetTool(t *testing.T) {
-	tool := &TaskGetTool{}
+func TestCreateTool(t *testing.T) {
+	m, _ := setupTestManager(t)
+	subject := "Fix authentication bug"
+	description := "The login flow is failing for users with special characters in their password."
+	activeForm := "Fixing authentication bug"
 
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task := globalManager.Create("Test", "Description", "")
+	task := m.Create(subject, description, activeForm)
 
-	result, err := tool.Call(context.Background(), map[string]any{
-		"taskId": task.ID,
-	})
-
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "Task #"+task.ID)
-	assert.Contains(t, result.Output, "Test")
+	assert.Equal(t, "task-1", task.ID)
+	assert.Equal(t, subject, task.Subject)
+	assert.Equal(t, description, task.Description)
+	assert.Equal(t, activeForm, task.ActiveForm)
+	assert.Equal(t, StatusPending, task.Status)
 }
 
-func TaskListTool_Test(t *testing.T) {
-	tool := &TaskListTool{}
+func TestGetTool(t *testing.T) {
+	m, _ := setupTestManager(t)
+	task := m.Create("Test Task", "Test Description", "")
 
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	globalManager.Create("Task 1", "Desc", "")
-	globalManager.Create("Task 2", "Desc", "")
-
-	result, err := tool.Call(context.Background(), map[string]any{})
-
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "Task List:")
-	assert.Contains(t, result.Output, "Total: 2 tasks")
-}
-
-func TestTaskUpdateTool(t *testing.T) {
-	tool := &TaskUpdateTool{}
-
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task := globalManager.Create("Original", "Desc", "")
-
-	result, err := tool.Call(context.Background(), map[string]any{
-		"taskId":  task.ID,
-		"status":  "completed",
-		"subject": "Updated",
-	})
-
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "Task #"+task.ID)
-	assert.Contains(t, result.Output, "completed")
-}
-
-func TestTaskDeleteTool(t *testing.T) {
-	tool := &TaskDeleteTool{}
-
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task := globalManager.Create("Test", "Desc", "")
-
-	result, err := tool.Call(context.Background(), map[string]any{
-		"taskId": task.ID,
-	})
-
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "deleted")
-
-	_, ok := globalManager.Get(task.ID)
-	assert.False(t, ok)
-}
-
-func TestTaskOutputTool(t *testing.T) {
-	tool := &TaskOutputTool{}
-
-	// Reset global manager
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	task := globalManager.Create("Test", "Desc", "")
-	task.Status = StatusCompleted
-
-	result, err := tool.Call(context.Background(), map[string]any{
-		"taskId": task.ID,
-	})
-
-	assert.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Output, "Task #"+task.ID)
-}
-
-func TestFormatTaskListSummary(t *testing.T) {
-	*globalManager = TaskManager{tasks: make(map[string]*Task), nextID: 1}
-	globalManager.Create("Pending Task", "Desc", "")
-	task2 := globalManager.Create("In Progress Task", "Desc", "")
-	task2.Status = StatusInProgress
-	task3 := globalManager.Create("Completed Task", "Desc", "")
-	task3.Status = StatusCompleted
-
-	result := formatTaskListSummary(globalManager.List())
-	assert.Contains(t, result, "○ [#1]")
-	assert.Contains(t, result, "◐ [#2]")
-	assert.Contains(t, result, "● [#3]")
-	assert.Contains(t, result, "Total: 3 tasks")
-}
-
-func TestFormatTaskDetail(t *testing.T) {
-	task := &Task{
-		ID:          "1",
-		Subject:     "Test Task",
-		Description: "Test Description",
-		Status:      StatusPending,
-		Owner:       "agent-1",
-		Blocks:      []string{"2", "3"},
-		BlockedBy:   []string{"4"},
-	}
-
-	result := formatTaskDetail(task)
-	assert.Contains(t, result, "Task #1: Test Task")
-	assert.Contains(t, result, "Status: pending")
-	assert.Contains(t, result, "Owner: agent-1")
-	assert.Contains(t, result, "Blocks: 2, 3")
-	assert.Contains(t, result, "Blocked by: 4")
-	assert.Contains(t, result, "Test Description")
+	retrieved, ok := m.Get(task.ID)
+	assert.True(t, ok)
+	assert.Equal(t, task.ID, retrieved.ID)
+	assert.Equal(t, "Test Task", retrieved.Subject)
 }

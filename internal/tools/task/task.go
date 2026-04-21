@@ -221,27 +221,32 @@ func (t *TaskUpdateTool) Call(_ context.Context, input map[string]any) (tools.To
 		return tools.ToolResult{Output: "Error: taskId is required", IsError: true}, nil
 	}
 
-	task, err := GetManager().Update(taskID, func(task *Task) {
+	// Get task first to return it later
+	task, ok := GetManager().Get(taskID)
+	if !ok {
+		return tools.ToolResult{Output: fmt.Sprintf("Task not found: %s", taskID), IsError: true}, nil
+	}
+
+	err := GetManager().Update(taskID, func(t *Task) {
 		if status, ok := input["status"].(string); ok {
-			task.Status = TaskStatus(status)
+			t.Status = TaskStatus(status)
 		}
 		if subject, ok := input["subject"].(string); ok {
-			task.Subject = subject
+			t.Subject = subject
 		}
 		if desc, ok := input["description"].(string); ok {
-			task.Description = desc
+			t.Description = desc
 		}
 		if activeForm, ok := input["activeForm"].(string); ok {
-			task.ActiveForm = activeForm
+			t.ActiveForm = activeForm
 		}
 		if owner, ok := input["owner"].(string); ok {
-			task.Owner = owner
+			t.Owner = owner
 		}
 
 		if addBlocks, ok := input["addBlocks"].([]any); ok {
 			for _, b := range addBlocks {
 				if id, ok := b.(string); ok {
-					task.Blocks = append(task.Blocks, id)
 					// Add reverse dependency (handled by AddBlock now)
 					GetManager().AddBlock(taskID, id)
 				}
@@ -251,7 +256,6 @@ func (t *TaskUpdateTool) Call(_ context.Context, input map[string]any) (tools.To
 		if addBlockedBy, ok := input["addBlockedBy"].([]any); ok {
 			for _, b := range addBlockedBy {
 				if id, ok := b.(string); ok {
-					task.BlockedBy = append(task.BlockedBy, id)
 					// Add reverse dependency (handled by AddBlockedBy now)
 					GetManager().AddBlockedBy(taskID, id)
 				}
@@ -262,6 +266,9 @@ func (t *TaskUpdateTool) Call(_ context.Context, input map[string]any) (tools.To
 	if err != nil {
 		return tools.ToolResult{Output: err.Error(), IsError: true}, nil
 	}
+
+	// Get updated task
+	task, _ = GetManager().Get(taskID)
 
 	return tools.ToolResult{
 		Output: fmt.Sprintf("Task #%s updated to %s: %s", task.ID, task.Status, task.Subject),
@@ -367,8 +374,8 @@ func formatTaskDetail(task *Task) string {
 	sb.WriteString(fmt.Sprintf("Task #%s: %s\n", task.ID, task.Subject))
 	sb.WriteString(fmt.Sprintf("Status: %s\n", task.Status))
 	sb.WriteString(fmt.Sprintf("Owner: %s\n", task.Owner))
-	sb.WriteString(fmt.Sprintf("Created: %s\n", task.CreatedAt.Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("Updated: %s\n", task.UpdatedAt.Format("2006-01-02 15:04:05")))
+	sb.WriteString(fmt.Sprintf("Created: %s\n", task.CreatedAt))
+	sb.WriteString(fmt.Sprintf("Updated: %s\n", task.UpdatedAt))
 
 	if len(task.Blocks) > 0 {
 		sb.WriteString(fmt.Sprintf("Blocks: %s\n", strings.Join(task.Blocks, ", ")))
@@ -399,10 +406,10 @@ func formatTaskListSummary(tasks []*Task) string {
 	sb.WriteString("───────────────────────────────────────────────────────────────────────\n")
 
 	// Order: in_progress first, then pending, then completed, then deleted
-	order := []string{StatusInProgress, StatusPending, StatusCompleted, StatusDeleted}
+	order := []TaskStatus{StatusInProgress, StatusPending, StatusCompleted, StatusDeleted}
 	for _, status := range order {
 		for _, task := range tasks {
-			if string(task.Status) != status {
+			if task.Status != status {
 				continue
 			}
 
