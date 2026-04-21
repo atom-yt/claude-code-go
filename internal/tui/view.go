@@ -259,6 +259,20 @@ func (m Model) renderStatusBar() string {
 		}
 	}
 
+	// Show compact indicator
+	if m.compactRunning {
+		parts = append(parts, m.styles.compactIndicator.Render("COMPACTING..."))
+	} else if m.compactMessage != "" {
+		parts = append(parts, m.styles.compactIndicator.Render(m.compactMessage))
+	}
+
+	// Show memory consolidation indicator
+	if m.consolidateRunning {
+		parts = append(parts, m.styles.memoryIndicator.Render("CONSOLIDATING..."))
+	} else if m.consolidateMessage != "" {
+		parts = append(parts, m.styles.memoryIndicator.Render(m.consolidateMessage))
+	}
+
 	parts = append(parts, "model:"+model)
 	if cwd != "" {
 		if len(cwd) > 30 {

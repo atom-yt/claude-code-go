@@ -131,11 +131,15 @@ type Model struct {
 	compactThreshold   float64
 	compactCooldown    time.Duration
 	compactKeepRecent  int
+	compactRunning     bool
+	compactMessage     string // Message to show when compact completes
 
 	// Auto-dream configuration.
 	autoDreamEnabled       bool
 	minConsolidateHours    int
 	minConsolidateSessions int
+	consolidateRunning     bool
+	consolidateMessage     string // Message to show when consolidation completes
 
 	// Slash commands.
 	cmdRegistry *commands.Registry
@@ -180,6 +184,8 @@ type styles struct {
 	autocompleteItem     lipgloss.Style
 	autocompleteSelected lipgloss.Style
 	planMode             lipgloss.Style
+	compactIndicator     lipgloss.Style
+	memoryIndicator      lipgloss.Style
 }
 
 // NewModel creates an initialised TUI model.
@@ -629,6 +635,8 @@ func buildStyles() styles {
 		autocompleteItem:     lipgloss.NewStyle().Foreground(lipgloss.Color("251")),
 		autocompleteSelected: lipgloss.NewStyle().Background(lipgloss.Color("24")).Foreground(lipgloss.Color("231")).Bold(true),
 		planMode:             lipgloss.NewStyle().Background(lipgloss.Color("220")).Foreground(lipgloss.Color("232")).Bold(true).Padding(0, 1),
+		compactIndicator:     lipgloss.NewStyle().Foreground(lipgloss.Color("208")).Bold(true),
+		memoryIndicator:      lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Bold(true),
 	}
 }
 
@@ -683,12 +691,17 @@ func (m *Model) compactHistory(ctx context.Context) error {
 		return fmt.Errorf("no agent available")
 	}
 
+	m.compactRunning = true
+
 	service := compact.NewService(m.ag.GetClient(), m.cfg.Model, m.ag.GetSystemPrompt())
 	result, err := service.Compact(ctx, m.ag.History(), m.compactKeepRecent)
 	if err != nil {
+		m.compactRunning = false
 		return err
 	}
+
 	if result.Noop {
+		m.compactRunning = false
 		return nil
 	}
 
@@ -705,6 +718,8 @@ func (m *Model) compactHistory(ctx context.Context) error {
 	m.sessionInputTokens = 0
 	m.sessionOutputTokens = 0
 	m.lastCompactTime = time.Now()
+	m.compactMessage = "Compacted history"
+	m.compactRunning = false
 	go m.saveSession()
 
 	return nil

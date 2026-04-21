@@ -22,6 +22,9 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 // spinnerTickMsg triggers a spinner frame advance.
 type spinnerTickMsg struct{}
 
+// clearStatusMsg triggers clearing of transient status messages.
+type clearStatusMsg struct{}
+
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	return nil
@@ -215,8 +218,12 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 // handleSubmit processes Enter when input is non-empty.
 func (m Model) handleSubmit() (tea.Model, tea.Cmd) {
-	// 关闭自动补全菜单
+	// Close autocomplete menu
 	m.hideAutocomplete()
+
+	// Clear status messages when user submits new input
+	m.compactMessage = ""
+	m.consolidateMessage = ""
 
 	text := trimSpace(m.input)
 	if text == "" {
@@ -584,18 +591,24 @@ func (m *Model) consolidateMemory(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("no agent available")
 	}
 
+	m.consolidateRunning = true
+
 	// Create a consolidator
 	consolidator, err := memory.NewConsolidator(m.cfg, m.ag.GetClient())
 	if err != nil {
+		m.consolidateRunning = false
 		return "", fmt.Errorf("failed to create consolidator: %w", err)
 	}
 
 	// Perform consolidation
 	result, err := consolidator.Consolidate(ctx)
 	if err != nil {
+		m.consolidateRunning = false
 		return "", fmt.Errorf("consolidation failed: %w", err)
 	}
 
+	m.consolidateRunning = false
+	m.consolidateMessage = "Memory consolidated"
 	return result, nil
 }
 
