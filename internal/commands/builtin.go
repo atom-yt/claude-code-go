@@ -22,6 +22,7 @@ func All() []Command {
 		&memoryCmd{},
 		&mcpCmd{},
 		&planCmd{},
+		&subagentCmd{},
 		&buddyCmd{},
 		&shortcutsCmd{},
 		&commitCmd{},
