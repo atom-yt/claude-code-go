@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 
+	"github.com/atom-yt/claude-code-go/internal/runtime"
 	"github.com/atom-yt/claude-code-go/internal/subagent"
 	"github.com/atom-yt/claude-code-go/internal/taskstore"
 )
@@ -33,6 +34,8 @@ type Context struct {
 	GetSubagentRuntime func() *subagent.Runtime
 	// GetTaskCount returns the count of active tasks (for status bar).
 	GetTaskCount func() int
+	// GetRuntimeState returns the runtime state for plan mode and execution tracking.
+	GetRuntimeState func() *runtime.State
 
 	// CompactHistory triggers history compaction.
 	CompactHistory func(ctx context.Context) error
