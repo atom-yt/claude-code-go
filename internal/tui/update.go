@@ -546,6 +546,17 @@ func summariseInput(input map[string]any) string {
 	return ""
 }
 
+// truncateOutput truncates tool output for display.
+func truncateOutput(output string, maxLen int) string {
+	if maxLen <= 0 {
+		maxLen = 500
+	}
+	if len(output) <= maxLen {
+		return output
+	}
+	return output[:maxLen] + fmt.Sprintf("\n... [truncated, %d more bytes]", len(output)-maxLen)
+}
+
 // saveSession persists the current agent history to disk.
 func (m *Model) saveSession() {
 	if m.ag == nil || m.sessionID == "" {

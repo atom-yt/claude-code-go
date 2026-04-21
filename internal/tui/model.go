@@ -168,6 +168,7 @@ type styles struct {
 	assistantLabel       lipgloss.Style
 	errorLabel           lipgloss.Style
 	toolLabel            lipgloss.Style
+	toolProgress         lipgloss.Style
 	askLabel             lipgloss.Style
 	messageText          lipgloss.Style
 	errorText            lipgloss.Style
