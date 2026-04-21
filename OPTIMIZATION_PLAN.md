@@ -699,12 +699,12 @@ internal/
 - ✅ MCP resources
 - ✅ MCP HTTP transport
 
-### P2：做完会明显加分 🚧
+### P2：做完会明显加分 ✅
 
 - ✅ plugin contract
-- ⏳ session search / indexing
+- ✅ session search / indexing
 - ✅ richer TUI panels（已完成状态栏显示）
-- ⏳ 模型能力感知与智能路由
+- ✅ 模型能力感知与智能路由
 
 ### P3：先不要急
 
