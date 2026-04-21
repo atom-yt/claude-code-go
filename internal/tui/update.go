@@ -12,6 +12,8 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/commands"
 	"github.com/atom-yt/claude-code-go/internal/memory"
 	"github.com/atom-yt/claude-code-go/internal/session"
+	"github.com/atom-yt/claude-code-go/internal/subagent"
+	"github.com/atom-yt/claude-code-go/internal/taskstore"
 )
 
 // spinnerFrames are the animation frames for the waiting spinner.
@@ -313,6 +315,18 @@ func (m *Model) buildCommandContext() *commands.Context {
 		},
 		GetCost: func() (int, int) {
 			return m.totalInputTokens, m.totalOutputTokens
+		},
+		GetTaskManager: func() *taskstore.Store {
+			return m.taskManager
+		},
+		GetSubagentRuntime: func() *subagent.Runtime {
+			return m.subagentRuntime
+		},
+		GetTaskCount: func() int {
+			if m.subagentRuntime != nil {
+				return m.subagentRuntime.GetSubagentCount()
+			}
+			return 0
 		},
 		CompactHistory: func(ctx context.Context) error {
 			return m.compactHistory(ctx)

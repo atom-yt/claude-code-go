@@ -1,7 +1,12 @@
 // Package commands implements slash commands.
 package commands
 
-import "context"
+import (
+	"context"
+
+	"github.com/atom-yt/claude-code-go/internal/subagent"
+	"github.com/atom-yt/claude-code-go/internal/taskstore"
+)
 
 // Context carries runtime objects available to commands.
 type Context struct {
@@ -21,6 +26,14 @@ type Context struct {
 	SetProvider func(provider string)
 	// GetCost returns cumulative token counts.
 	GetCost func() (inputTokens, outputTokens int)
+
+	// GetTaskManager returns the task store for task operations.
+	GetTaskManager func() *taskstore.Store
+	// GetSubagentRuntime returns the subagent runtime for background tasks.
+	GetSubagentRuntime func() *subagent.Runtime
+	// GetTaskCount returns the count of active tasks (for status bar).
+	GetTaskCount func() int
+
 	// CompactHistory triggers history compaction.
 	CompactHistory func(ctx context.Context) error
 	// ConsolidateMemory triggers memory consolidation.

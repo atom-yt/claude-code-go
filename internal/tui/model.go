@@ -22,8 +22,11 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/permissions"
 	"github.com/atom-yt/claude-code-go/internal/prompt"
 	"github.com/atom-yt/claude-code-go/internal/providers"
+	"github.com/atom-yt/claude-code-go/internal/runtime"
 	"github.com/atom-yt/claude-code-go/internal/session"
 	"github.com/atom-yt/claude-code-go/internal/skills"
+	"github.com/atom-yt/claude-code-go/internal/subagent"
+	"github.com/atom-yt/claude-code-go/internal/taskstore"
 	"github.com/atom-yt/claude-code-go/internal/tools"
 	toolask "github.com/atom-yt/claude-code-go/internal/tools/ask"
 	toolbash "github.com/atom-yt/claude-code-go/internal/tools/bash"
@@ -33,7 +36,7 @@ import (
 	toolgrep "github.com/atom-yt/claude-code-go/internal/tools/grep"
 	toolplanmode "github.com/atom-yt/claude-code-go/internal/tools/planmode"
 	toolread "github.com/atom-yt/claude-code-go/internal/tools/read"
-	tasktool "github.com/atom-yt/claude-code-go/internal/tools/task"
+	tooltask "github.com/atom-yt/claude-code-go/internal/tools/task"
 	tooltodo "github.com/atom-yt/claude-code-go/internal/tools/todo"
 	toolwebfetch "github.com/atom-yt/claude-code-go/internal/tools/webfetch"
 	toolwebsearch "github.com/atom-yt/claude-code-go/internal/tools/websearch"
@@ -142,6 +145,11 @@ type Model struct {
 	// Session persistence.
 	sessionID string
 
+	// Runtime state for plan mode and execution tracking.
+	runtimeState   *runtime.State
+	taskManager     *taskstore.Store
+	subagentRuntime *subagent.Runtime
+
 	// Spinner animation frame index.
 	spinnerIdx int
 
@@ -247,9 +255,27 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 		m.minConsolidateSessions = 5 // Default 5 sessions
 	}
 
+	// Initialize runtime state for plan mode and execution tracking.
+	if cwd, err := os.Getwd(); err == nil {
+		m.runtimeState = runtime.NewRuntimeState(cwd)
+	}
+
+	// Initialize task manager with durable storage.
+	if cwd, err := os.Getwd(); err == nil {
+		if taskStore, err := taskstore.New(cwd); err == nil {
+			m.taskManager = taskStore
+		} else {
+			// Log error but don't fail initialization
+			fmt.Fprintf(os.Stderr, "Warning: failed to initialize task store: %v\n", err)
+		}
+
+		// Initialize subagent runtime for background task execution.
+		m.subagentRuntime = subagent.NewRuntime()
+	}
+
 	if settings.APIKey != "" {
 		client := buildClient(settings)
-		registry := buildRegistry()
+		registry := buildRegistry(m.runtimeState)
 
 		// Connect MCP servers and register their tools.
 		connectMCPServers(context.Background(), settings.MCPServers, registry)
@@ -374,7 +400,7 @@ func buildClient(s config.Settings) api.Streamer {
 }
 
 // buildRegistry registers all built-in tools.
-func buildRegistry() *tools.Registry {
+func buildRegistry(state *runtime.State) *tools.Registry {
 	r := tools.NewRegistry()
 	r.Register(&toolread.Tool{})
 	r.Register(&toolwrite.Tool{})
@@ -384,15 +410,17 @@ func buildRegistry() *tools.Registry {
 	r.Register(&toolgrep.Tool{})
 	r.Register(toolwebfetch.NewTool())
 	r.Register(toolwebsearch.NewTool())
-	r.Register(&toolplanmode.EnterPlanModeTool{})
-	r.Register(&toolplanmode.ExitPlanModeTool{})
+	if state != nil {
+		r.Register(&toolplanmode.EnterPlanModeTool{State: state})
+		r.Register(&toolplanmode.ExitPlanModeTool{State: state})
+	}
 	r.Register(&tooltodo.Tool{})
-	r.Register(&tasktool.TaskCreateTool{})
-	r.Register(&tasktool.TaskGetTool{})
-	r.Register(&tasktool.TaskListTool{})
-	r.Register(&tasktool.TaskUpdateTool{})
-	r.Register(&tasktool.TaskDeleteTool{})
-	r.Register(&tasktool.TaskOutputTool{})
+	r.Register(&tooltask.TaskCreateTool{})
+	r.Register(&tooltask.TaskGetTool{})
+	r.Register(&tooltask.TaskListTool{})
+	r.Register(&tooltask.TaskUpdateTool{})
+	r.Register(&tooltask.TaskDeleteTool{})
+	r.Register(&tooltask.TaskOutputTool{})
 	r.Register(&toolask.Tool{})
 	r.Register(&toolbrief.Tool{})
 	return r

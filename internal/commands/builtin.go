@@ -14,6 +14,7 @@ func All() []Command {
 		&modelCmd{},
 		&costCmd{},
 		&compactCmd{},
+		&consolidateCmd{},
 		&configCmd{},
 		&permissionsCmd{},
 		&hooksCmd{},
@@ -27,6 +28,7 @@ func All() []Command {
 		&reviewCmd{},
 		&securityReviewCmd{},
 		&dreamCmd{},
+		&TaskCmd{},
 	}
 }
 
@@ -49,7 +51,7 @@ func NewRegistry() *Registry {
 	return r
 }
 
-// Get returns the command for the given name/alias.
+// Get returns the command for given name/alias.
 func (r *Registry) Get(name string) (Command, bool) {
 	c, ok := r.index[strings.TrimPrefix(name, "/")]
 	return c, ok
@@ -58,7 +60,7 @@ func (r *Registry) Get(name string) (Command, bool) {
 // List returns all registered commands.
 func (r *Registry) List() []Command { return r.list }
 
-// Register adds a command to the registry.
+// Register adds a command to registry.
 func (r *Registry) Register(cmd Command) {
 	r.list = append(r.list, cmd)
 	r.index[cmd.Name()] = cmd
@@ -190,6 +192,31 @@ func (c *compactCmd) Execute(ctx context.Context, _ []string, cmdCtx *Context) (
 		return "", fmt.Errorf("compact failed: %w", err)
 	}
 	return "History compacted.", nil
+}
+
+// ---- /consolidate ----
+
+type consolidateCmd struct{}
+
+func (c *consolidateCmd) Name() string        { return "consolidate" }
+func (c *consolidateCmd) Aliases() []string   { return nil }
+func (c *consolidateCmd) Description() string { return "Trigger memory consolidation manually" }
+
+func (c *consolidateCmd) Execute(ctx context.Context, _ []string, cmdCtx *Context) (string, error) {
+	if cmdCtx.ConsolidateMemory == nil {
+		return "Memory consolidation not available", nil
+	}
+
+	result, err := cmdCtx.ConsolidateMemory(ctx)
+	if err != nil {
+		return "", fmt.Errorf("consolidation failed: %w", err)
+	}
+
+	if result == "" {
+		return "Memory consolidation complete. No updates needed.", nil
+	}
+
+	return "Memory consolidation complete.\n\n" + result, nil
 }
 
 // ---- /buddy ----
