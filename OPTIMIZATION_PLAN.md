@@ -651,10 +651,10 @@ internal/
 - ✅ url guard (`internal/urlutil/`)
 - ✅ MCP resources (`internal/mcpresource/`)
 - ✅ MCP HTTP transport (`internal/mcp/http_client.go`)
+- ✅ sandbox abstraction (`internal/sandbox/`)
 
 待完成：
 
-- ⏳ sandbox abstraction
 - ⏳ plugin contract
 
 验收标准：
