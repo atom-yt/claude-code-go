@@ -22,8 +22,8 @@ const (
 
 // HTTPClient extends Client for HTTP transport.
 type HTTPClient struct {
-	name     string
-	trust    string
+	name      string
+	trust     string
 	transport TransportType
 	baseURL   string
 	httpClient *http.Client
@@ -33,6 +33,13 @@ type HTTPClient struct {
 	pending map[int]chan response
 
 	Tools []ToolDef // populated after Connect()
+
+	// Health tracking
+	healthMu          sync.RWMutex
+	healthStatus       HealthStatus
+	consecutiveErrors int
+	lastError         error
+	lastErrorTime     time.Time
 }
 
 // ConnectHTTP connects to an MCP server via HTTP/SSE and performs the handshake.
@@ -45,7 +52,8 @@ func ConnectHTTP(ctx context.Context, name, trust, baseURL string) (*HTTPClient,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
-		pending: make(map[int]chan response),
+		pending:    make(map[int]chan response),
+		healthStatus: HealthHealthy,
 	}
 
 	// Handshake.
@@ -240,4 +248,62 @@ func joinStrings(parts []string, sep string) string {
 		result += sep + parts[i]
 	}
 	return result
+}
+// HealthStatus returns the current health status of the MCP server.
+func (c *HTTPClient) HealthStatus() HealthStatus {
+	c.healthMu.RLock()
+	defer c.healthMu.RUnlock()
+	return c.healthStatus
+}
+
+// HealthError returns the last error if unhealthy, nil if healthy.
+func (c *HTTPClient) HealthError() error {
+	c.healthMu.RLock()
+	defer c.healthMu.RUnlock()
+	if c.healthStatus == HealthHealthy {
+		return nil
+	}
+	return c.lastError
+}
+
+// CheckHealth performs a health check by attempting to list tools.
+// Returns the current health status and any error encountered.
+func (c *HTTPClient) CheckHealth(ctx context.Context) (HealthStatus, error) {
+	ctx, cancel := context.WithTimeout(ctx, HealthCheckTimeout)
+	defer cancel()
+
+	// Try to list tools as a simple health check
+	var result toolsListResult
+	err := c.call(ctx, "tools/list", nil, &result)
+
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+
+	if err != nil {
+		c.consecutiveErrors++
+		c.lastError = err
+		c.lastErrorTime = time.Now()
+
+		// Mark unhealthy after consecutive failures
+		if c.consecutiveErrors >= MaxHealthCheckFailures {
+			c.healthStatus = HealthUnhealthy
+		}
+		return c.healthStatus, err
+	}
+
+	// Success - reset error counter and mark healthy
+	c.consecutiveErrors = 0
+	c.lastError = nil
+	c.healthStatus = HealthHealthy
+	return c.healthStatus, nil
+}
+
+// ResetHealth resets the health status to healthy.
+// Useful after reconnection attempts.
+func (c *HTTPClient) ResetHealth() {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+	c.healthStatus = HealthHealthy
+	c.consecutiveErrors = 0
+	c.lastError = nil
 }

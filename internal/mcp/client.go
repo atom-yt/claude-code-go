@@ -15,19 +15,44 @@ import (
 
 const initTimeout = 10 * time.Second
 
+const (
+	// HealthCheckInterval is how often to check server health
+	HealthCheckInterval = 30 * time.Second
+	// HealthCheckTimeout is how long to wait for health check response
+	HealthCheckTimeout = 5 * time.Second
+	// MaxHealthCheckFailures is how many consecutive failures before marking unhealthy
+	MaxHealthCheckFailures = 3
+)
+
+// HealthStatus represents the health state of an MCP connection.
+type HealthStatus string
+
+const (
+	HealthHealthy   HealthStatus = "healthy"
+	HealthUnhealthy HealthStatus = "unhealthy"
+	HealthUnknown   HealthStatus = "unknown"
+)
+
 // Client connects to one MCP server and wraps its tools as Tool objects.
 type Client struct {
-	name    string
-	trust   string // Trust level: "full", "limited", "untrusted"
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  *bufio.Reader
+	name      string
+	trust     string // Trust level: "full", "limited", "untrusted"
+	cmd       *exec.Cmd
+	stdin     io.WriteCloser
+	stdout    *bufio.Reader
 
-	mu      sync.Mutex
-	nextID  atomic.Int64
-	pending map[int]chan response
+	mu       sync.Mutex
+	nextID   atomic.Int64
+	pending  map[int]chan response
 
 	Tools []ToolDef // populated after Connect()
+
+	// Health tracking
+	healthMu          sync.RWMutex
+	healthStatus       HealthStatus
+	consecutiveErrors int
+	lastError         error
+	lastErrorTime     time.Time
 }
 
 // ConnectStdio starts an MCP server via stdio and performs the handshake.
@@ -49,12 +74,13 @@ func ConnectStdio(ctx context.Context, name, trust string, command string, args 
 	}
 
 	c := &Client{
-		name:    name,
-		trust:   trust,
-		cmd:     cmd,
-		stdin:   stdin,
-		stdout:  bufio.NewReader(stdoutPipe),
-		pending: make(map[int]chan response),
+		name:      name,
+		trust:     trust,
+		cmd:       cmd,
+		stdin:     stdin,
+		stdout:    bufio.NewReader(stdoutPipe),
+		pending:   make(map[int]chan response),
+		healthStatus: HealthHealthy,
 	}
 
 	// Read loop.
@@ -229,6 +255,7 @@ func (c *Client) readLoop() {
 	for {
 		line, err := c.stdout.ReadString('\n')
 		if err != nil {
+			c.recordHealthError(err)
 			break
 		}
 		line = strings.TrimSpace(line)
@@ -249,4 +276,78 @@ func (c *Client) readLoop() {
 			ch <- resp
 		}
 	}
+}
+
+// HealthStatus returns the current health status of the MCP server.
+func (c *Client) HealthStatus() HealthStatus {
+	c.healthMu.RLock()
+	defer c.healthMu.RUnlock()
+	return c.healthStatus
+}
+
+// HealthError returns the last error if unhealthy, nil if healthy.
+func (c *Client) HealthError() error {
+	c.healthMu.RLock()
+	defer c.healthMu.RUnlock()
+	if c.healthStatus == HealthHealthy {
+		return nil
+	}
+	return c.lastError
+}
+
+// CheckHealth performs a health check by attempting to list tools.
+// Returns the current health status and any error encountered.
+func (c *Client) CheckHealth(ctx context.Context) (HealthStatus, error) {
+	ctx, cancel := context.WithTimeout(ctx, HealthCheckTimeout)
+	defer cancel()
+
+	// Try to list tools as a simple health check
+	var result toolsListResult
+	err := c.call(ctx, "tools/list", nil, &result)
+
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+
+	if err != nil {
+		c.consecutiveErrors++
+		c.lastError = err
+		c.lastErrorTime = time.Now()
+
+		// Mark unhealthy after consecutive failures
+		if c.consecutiveErrors >= MaxHealthCheckFailures {
+			c.healthStatus = HealthUnhealthy
+		}
+		return c.healthStatus, err
+	}
+
+	// Success - reset error counter and mark healthy
+	c.consecutiveErrors = 0
+	c.lastError = nil
+	c.healthStatus = HealthHealthy
+	return c.healthStatus, nil
+}
+
+// recordHealthError records an error from readLoop for health tracking.
+func (c *Client) recordHealthError(err error) {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+
+	c.consecutiveErrors++
+	c.lastError = err
+	c.lastErrorTime = time.Now()
+
+	// Only mark unhealthy if this isn't a clean shutdown
+	if err != io.EOF && c.consecutiveErrors >= MaxHealthCheckFailures {
+		c.healthStatus = HealthUnhealthy
+	}
+}
+
+// ResetHealth resets the health status to healthy.
+// Useful after reconnection attempts.
+func (c *Client) ResetHealth() {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+	c.healthStatus = HealthHealthy
+	c.consecutiveErrors = 0
+	c.lastError = nil
 }
