@@ -109,7 +109,7 @@ func TestAgent_PlainTextResponse(t *testing.T) {
 	client := api.New("test-key")
 	client.BaseURL = srv.URL
 
-	ag := agent.New(client, "claude-test", nil, nil, nil)
+	ag := agent.New(client, "claude-test", "anthropic", nil, nil, nil)
 	ch := ag.Query(context.Background(), "Hi")
 	events := collectAgentEvents(ch)
 
@@ -168,7 +168,7 @@ data: {"type":"message_stop"}
 	registry := tools.NewRegistry()
 	registry.Register(&mockTool{name: "echo_tool", output: "echo output"})
 
-	ag := agent.New(client, "claude-test", registry, nil, nil)
+	ag := agent.New(client, "claude-test", "anthropic", registry, nil, nil)
 	ch := ag.Query(context.Background(), "Use the tool")
 	events := collectAgentEvents(ch)
 
@@ -220,7 +220,7 @@ func TestAgent_APIError(t *testing.T) {
 	client := api.New("bad-key")
 	client.BaseURL = srv.URL
 
-	ag := agent.New(client, "claude-test", nil, nil, nil)
+	ag := agent.New(client, "claude-test", "anthropic", nil, nil, nil)
 	ch := ag.Query(context.Background(), "hello")
 	events := collectAgentEvents(ch)
 
@@ -267,7 +267,7 @@ data: {"type":"message_stop"}
 	// Empty registry — tool won't be found.
 	registry := tools.NewRegistry()
 
-	ag := agent.New(client, "claude-test", registry, nil, nil)
+	ag := agent.New(client, "claude-test", "anthropic", registry, nil, nil)
 	ch := ag.Query(context.Background(), "use unknown tool")
 	events := collectAgentEvents(ch)
 
@@ -291,7 +291,7 @@ func TestAgent_HistoryPreserved(t *testing.T) {
 	client := api.New("test-key")
 	client.BaseURL = srv.URL
 
-	ag := agent.New(client, "claude-test", nil, nil, nil)
+	ag := agent.New(client, "claude-test", "anthropic", nil, nil, nil)
 
 	prior := []api.Message{
 		api.TextMessage(api.RoleUser, "prior user message"),
@@ -325,7 +325,7 @@ func TestAgent_SystemPromptInjected(t *testing.T) {
 		},
 	}
 
-	ag := agent.New(streamer, "claude-test", nil, nil, nil)
+	ag := agent.New(streamer, "claude-test", "anthropic", nil, nil, nil)
 	ag.SetSystemPrompt("use project instructions")
 
 	ch := ag.Query(context.Background(), "hello")

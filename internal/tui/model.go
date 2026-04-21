@@ -304,7 +304,7 @@ func NewModel(cliCfg Config, initialPrompt string) Model {
 
 		checker := buildChecker(settings.Permissions, &m, settings.MCPServers)
 		executor := buildExecutor(settings.Hooks)
-		m.ag = agent.New(client, settings.Model, registry, checker, executor)
+		m.ag = agent.New(client, settings.Model, settings.Provider, registry, checker, executor)
 		if systemPrompt := buildSystemPrompt(m.skillRegistry); systemPrompt != "" {
 			m.ag.SetSystemPrompt(systemPrompt)
 

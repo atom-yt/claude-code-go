@@ -53,7 +53,7 @@ func TestCompactHistoryRewritesUIAndAgentHistory(t *testing.T) {
 	m.sessionID = "session-test-1"
 	m.sessionInputTokens = 123
 	m.sessionOutputTokens = 45
-	m.ag = agent.New(streamer, "claude-test", nil, nil, nil)
+	m.ag = agent.New(streamer, "claude-test", "anthropic", nil, nil, nil)
 	m.ag.SetSystemPrompt("project rules")
 	m.ag.SetHistory([]api.Message{
 		api.TextMessage(api.RoleUser, "first task"),

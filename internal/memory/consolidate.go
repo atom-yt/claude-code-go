@@ -128,7 +128,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) (string, error) {
 	registry.Register(&toolgrep.Tool{})
 
 	// Create a temporary agent for consolidation
-	consolidatorAgent := agent.New(c.client, c.cfg.Model, registry, nil, nil)
+	consolidatorAgent := agent.New(c.client, c.cfg.Model, c.cfg.Provider, registry, nil, nil)
 
 	// Run the consolidation query
 	eventCh := consolidatorAgent.Query(ctx, prompt)

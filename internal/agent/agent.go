@@ -9,6 +9,7 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/api"
 	"github.com/atom-yt/claude-code-go/internal/hooks"
 	"github.com/atom-yt/claude-code-go/internal/permissions"
+	"github.com/atom-yt/claude-code-go/internal/providers"
 	"github.com/atom-yt/claude-code-go/internal/tools"
 )
 
@@ -16,26 +17,46 @@ import (
 type Agent struct {
 	client   api.Streamer
 	model    string
+	provider string
 	registry *tools.Registry
 	checker  *permissions.Checker
 	executor *hooks.Executor
 	system   string
 	history  []api.Message
+	caps     api.Capabilities // Model capabilities
+	budget    *api.TokenBudget // Token budget tracking
 }
 
 // New creates an Agent. checker and executor may be nil.
-func New(client api.Streamer, model string, registry *tools.Registry, checker *permissions.Checker, executor *hooks.Executor) *Agent {
+func New(client api.Streamer, model, provider string, registry *tools.Registry, checker *permissions.Checker, executor *hooks.Executor) *Agent {
+	// Get model capabilities
+	caps := api.GetCapabilities(provider, model)
+
+	// Get context window for this model
+	contextWindow := providers.ContextWindow(model)
+	budget := api.NewTokenBudget(contextWindow)
+
 	return &Agent{
 		client:   client,
 		model:    model,
+		provider: provider,
 		registry: registry,
 		checker:  checker,
 		executor: executor,
+		caps:     caps,
+		budget:    budget,
 	}
 }
 
-// SetModel changes the model used for subsequent queries.
-func (a *Agent) SetModel(model string) { a.model = model }
+// SetModel changes model used for subsequent queries.
+func (a *Agent) SetModel(model string) {
+	a.model = model
+	// Update capabilities for new model
+	a.caps = api.GetCapabilities(a.provider, model)
+	// Update budget for new model's context window
+	contextWindow := providers.ContextWindow(model)
+	a.budget = api.NewTokenBudget(contextWindow)
+}
 
 // SetClient replaces the API client (used when switching providers at runtime).
 func (a *Agent) SetClient(client api.Streamer) { a.client = client }
@@ -64,6 +85,16 @@ func (a *Agent) GetClient() api.Streamer {
 // GetSystemPrompt returns the current system prompt.
 func (a *Agent) GetSystemPrompt() string {
 	return a.system
+}
+
+// GetCapabilities returns the current model's capabilities.
+func (a *Agent) GetCapabilities() api.Capabilities {
+	return a.caps
+}
+
+// GetTokenBudget returns the current token budget manager.
+func (a *Agent) GetTokenBudget() *api.TokenBudget {
+	return a.budget
 }
 
 // Query appends the user message to history, runs the agent loop, and streams
