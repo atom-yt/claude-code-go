@@ -5,6 +5,8 @@ dist/
 # Go build artifacts
 *.test
 *.out
+.harness/scripts/lint-*
+!.harness/scripts/lint-*.go
 
 # Editor
 .idea/

@@ -73,13 +73,6 @@ func main() {
 		step := &steps[i]
 		fmt.Printf("Running: %s...", step.Name)
 
-		if step.Name == "Tests" {
-			// Skip test check for now - it's expected to have packages without tests
-			fmt.Printf(" SKIP (packages without tests are expected)\n")
-			step.Passed = true  // Mark as passed since we're skipping by design
-			continue
-		}
-
 		if step.Name == "Format Check" {
 			// Special handling for gofmt - it returns file paths on error
 			err := step.Run()

@@ -58,15 +58,20 @@ Hook system for pre/post tool execution.
 
 ### internal/memory/
 Session memory and cross-session persistence.
+- Stores session summaries in JSON format
+- Supports dual-write for backward compatibility (JSON + legacy Markdown)
 
 ### internal/providers/
 Provider registry and configuration.
 
 ### internal/compact/
 Message compaction services.
+- MicroCompactor: Heuristic-based history compression
+- Reduces token usage by truncating and summarizing
 
 ### internal/tools/
-Tool implementations (Read, Write, Bash, Glob, Grep, etc.).
+Tool implementations (Read, Write, Bash, Glob, Grep, WebSearch, etc.).
+- WebSearch: DuckDuckGo HTML search for real-time information
 
 ### internal/api/
 API clients (Anthropic, OpenAI) for LLM communication.
@@ -119,6 +124,22 @@ type Tool interface {
 ## Provider System
 
 Providers are registered in `internal/providers/registry.go` and support both Anthropic and OpenAI protocols.
+
+### Supported Providers
+
+| Provider | Protocol | Models |
+|----------|----------|--------|
+| anthropic | Anthropic | claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5 |
+| openai | OpenAI | gpt-4o, gpt-4-turbo |
+| kimi | OpenAI | glm-4, glm-5 |
+| codex | OpenAI | Various models |
+| deepseek | OpenAI | deepseek-chat, deepseek-reasoner |
+| qwen | OpenAI | qwen-turbo, qwen-plus |
+| ark | OpenAI/Anthropic | Various models |
+
+### Model Capabilities
+
+Model capabilities (tool use, vision, streaming, etc.) are defined in `internal/api/capabilities.go`.
 
 ## Session Lifecycle
 
