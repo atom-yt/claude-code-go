@@ -53,6 +53,10 @@ var ModelCapabilities = map[string]Capabilities{
 	"qwen":                  {ToolUse: true, ParallelToolCalls: true, Vision: false, Streaming: true, Reasoning: false},
 	"qwen2":                 {ToolUse: true, ParallelToolCalls: true, Vision: false, Streaming: true, Reasoning: false},
 
+	// GLM models
+	"glm-5":                 {ToolUse: true, ParallelToolCalls: true, Vision: false, Streaming: true, Reasoning: false},
+	"glm-4":                 {ToolUse: true, ParallelToolCalls: true, Vision: false, Streaming: true, Reasoning: false},
+
 	// Ark models
 	"ark-code-latest":        {ToolUse: true, ParallelToolCalls: true, Vision: false, Streaming: true, Reasoning: false},
 }

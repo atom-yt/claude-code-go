@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-04-23T05:55:00Z",
+  "language": "go",
+  "framework": "cobra-bubbletea",
+  "layer_mapping": {
+    "0": ["pkg/"],
+    "1": ["internal/messages/", "internal/pathutil/", "internal/urlutil/"],
+    "2": ["internal/config/", "internal/permissions/", "internal/hooks/", "internal/memory/", "internal/providers/", "internal/compact/"],
+    "3": ["internal/tools/", "internal/api/", "internal/commands/", "internal/skills/", "internal/mcp/", "internal/prompt/"],
+    "4": ["internal/agent/", "internal/tui/", "internal/session/", "internal/subagent/", "internal/runtime/", "internal/taskstore/"]
+  },
+  "quality_rules": {
+    "max_file_size": 500,
+    "no_printf": true,
+    "no_global_vars": true,
+    "max_func_length": 100,
+    "no_exported_errors": false
+  },
+  "custom_rules": [],
+  "files_generated": [
+    ".harness/docs/ARCHITECTURE.md",
+    ".harness/docs/DEVELOPMENT.md",
+    ".harness/docs/PRODUCT_SENSE.md",
+    ".harness/scripts/lint-deps.go",
+    ".harness/scripts/lint-quality.go",
+    ".harness/scripts/validate.go",
+    ".harness/rules/common/safety.md",
+    ".harness/rules/common/git-workflow.md",
+    ".harness/rules/go/development.md",
+    ".harness/memory/README.md",
+    ".harness/trace/README.md",
+    ".harness/hooks/post-commit",
+    ".harness/manifest.json"
+  ]
+}

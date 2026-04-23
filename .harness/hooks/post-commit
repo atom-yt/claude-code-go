@@ -1,0 +1,6 @@
+#!/bin/bash
+# Harness post-commit hook
+# Marks harness as potentially needing update after commits
+
+echo "[harness] Checking for harness update needs..."
+touch .harness/.needs-update 2>/dev/null || true
