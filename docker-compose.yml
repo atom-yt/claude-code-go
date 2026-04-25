@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database with pgvector support
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: atom-ai-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-atom_ai}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-atom_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - atom-ai-network
+    restart: unless-stopped
+
+  # Backend API server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: atom-ai-backend
+    environment:
+      # Database
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-atom_ai}?sslmode=disable
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production}
+
+      # API Keys for LLM providers
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+
+      # Default configuration
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-anthropic}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-claude-sonnet-4-6}
+
+      # Server
+      SERVER_PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - atom-ai-network
+    restart: unless-stopped
+
+  # Frontend Next.js application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: atom-ai-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NODE_ENV: production
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - atom-ai-network
+    restart: unless-stopped
+
+  # Gateway service (optional, for reverse proxy and routing)
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atom-ai-gateway
+    environment:
+      # Backend service URLs
+      BACKEND_URL: http://backend:8080
+      FRONTEND_URL: http://frontend:3000
+
+      # Gateway configuration
+      GATEWAY_PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${GATEWAY_PORT:-8000}:8080"
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - atom-ai-network
+    restart: unless-stopped
+    profiles:
+      - with-gateway  # Only start with --profile with-gateway
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  atom-ai-network:
+    driver: bridge

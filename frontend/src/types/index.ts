@@ -36,9 +36,9 @@ export interface Agent {
 export interface Session {
   id: string;
   userId: string;
+  agentId: string;        // 关联的 Agent ID
   title: string;
-  model: string;
-  provider: string;
+  status: 'active' | 'archived' | 'deleted';  // Session 状态
   createdAt: string;
   updatedAt: string;
 }
@@ -75,8 +75,7 @@ export interface RegisterRequest {
 
 export interface CreateSessionRequest {
   title?: string;
-  model?: string;
-  provider?: string;
+  agentId: string;        // 必填：关联的 Agent ID
 }
 
 export interface SendMessageRequest {

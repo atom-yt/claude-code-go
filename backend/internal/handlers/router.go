@@ -12,13 +12,14 @@ import (
 
 // Router manages all HTTP routes
 type Router struct {
-	router        *mux.Router
-	authHandler   *auth.Handler
-	agentHandler  *AgentHandler
+	router         *mux.Router
+	authService    *auth.Service
+	authHandler    *auth.Handler
+	agentHandler   *AgentHandler
 	sessionHandler *SessionHandler
 	messageHandler *MessageHandler
-	chatHandler   *ChatHandler
-	healthHandler *HealthHandler
+	chatHandler    *ChatHandler
+	healthHandler  *HealthHandler
 }
 
 // Config holds router configuration
@@ -35,13 +36,14 @@ func NewRouter(cfg *Config) *Router {
 	r := mux.NewRouter()
 
 	router := &Router{
-		router:        r,
-		authHandler:   auth.NewHandler(cfg.AuthService),
-		agentHandler:  NewAgentHandler(cfg.AgentService),
+		router:         r,
+		authService:    cfg.AuthService,
+		authHandler:    auth.NewHandler(cfg.AuthService),
+		agentHandler:   NewAgentHandler(cfg.AgentService),
 		sessionHandler: NewSessionHandler(cfg.SessionService),
 		messageHandler: NewMessageHandler(cfg.MessageService),
-		chatHandler:   NewChatHandler(cfg.AgentFactory),
-		healthHandler: NewHealthHandler(),
+		chatHandler:    NewChatHandler(cfg.AgentFactory),
+		healthHandler:  NewHealthHandler(),
 	}
 
 	router.setupRoutes()
@@ -72,7 +74,7 @@ func (r *Router) setupRoutes() {
 
 	// Protected routes (require authentication)
 	protected := api.PathPrefix("").Subrouter()
-	protected.Use(authMiddleware)
+	protected.Use(r.authService.AuthMiddleware)
 
 	// User routes
 	protected.HandleFunc("/auth/me", r.authHandler.HandleMe).Methods("GET")
@@ -116,23 +118,6 @@ func (r *Router) GetRouter() *mux.Router {
 // ServeHTTP implements http.Handler
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
-}
-
-// authMiddleware validates JWT tokens and adds user ID to context
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get the authorization header
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			respondWithError(w, http.StatusUnauthorized, "authorization header required")
-			return
-		}
-
-		// For now, we'll skip actual validation
-		// In production, validate the token using auth.Service.ValidateToken
-		// and add the user ID to the context using auth.UserIDKey
-		next.ServeHTTP(w, r)
-	})
 }
 
 // GetUserID extracts user ID from request context

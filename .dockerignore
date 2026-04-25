@@ -1,0 +1,59 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude Code configuration
+.claude/
+
+# Testing and code coverage
+coverage/
+*.out
+*.test
+
+# Documentation and rules
+.harness/
+README.md
+docs/
+
+# Environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Node modules (for Gateway, if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts and temporary files
+*.log
+*.tmp
+*.bak
+dist/
+build/
+*.exe
+*.dll
+*.so
+
+# Development files
+dev/
+local/
+
+# Claude and AI tools
+claude-session/
+.claude-memory/
+
+# OS specific files
+Thumbs.db
+.DS_Store
+*.pid

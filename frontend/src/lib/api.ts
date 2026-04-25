@@ -1,7 +1,16 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AuthResponse, ApiError } from '@/types';
+import { AuthResponse, ApiError, Agent, Session, Message } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// 分页响应类型
+interface ListResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -121,19 +130,20 @@ export const authApi = {
 
 // Agents API
 export const agentsApi = {
-  list: async (): Promise<any[]> => {
-    return api.get('/api/v1/agents');
+  list: async (): Promise<Agent[]> => {
+    const response = await api.get<ListResponse<Agent>>('/api/v1/agents');
+    return response.items;
   },
 
-  get: async (id: string): Promise<any> => {
+  get: async (id: string): Promise<Agent> => {
     return api.get(`/api/v1/agents/${id}`);
   },
 
-  create: async (data: any): Promise<any> => {
+  create: async (data: any): Promise<Agent> => {
     return api.post('/api/v1/agents', data);
   },
 
-  update: async (id: string, data: any): Promise<any> => {
+  update: async (id: string, data: any): Promise<Agent> => {
     return api.put(`/api/v1/agents/${id}`, data);
   },
 
@@ -144,20 +154,124 @@ export const agentsApi = {
 
 // Sessions API
 export const sessionsApi = {
-  list: async (agentId?: string): Promise<any[]> => {
+  list: async (agentId?: string): Promise<Session[]> => {
     const params = agentId ? { agentId } : {};
-    return api.get('/api/v1/sessions', { params });
+    const response = await api.get<ListResponse<Session>>('/api/v1/sessions', { params });
+    return response.items;
   },
 
-  get: async (id: string): Promise<any> => {
+  get: async (id: string): Promise<Session> => {
     return api.get(`/api/v1/sessions/${id}`);
   },
 
-  create: async (data: any): Promise<any> => {
+  create: async (data: any): Promise<Session> => {
     return api.post('/api/v1/sessions', data);
   },
 
   delete: async (id: string): Promise<void> => {
     return api.delete(`/api/v1/sessions/${id}`);
+  },
+};
+
+// Messages API
+export const messagesApi = {
+  get: async (sessionId: string, page = 1, pageSize = 50): Promise<Message[]> => {
+    const response = await api.get<ListResponse<Message>>(`/api/v1/sessions/${sessionId}/messages`, {
+      params: { page, page_size: pageSize }
+    });
+    return response.items;
+  },
+
+  getRecent: async (sessionId: string): Promise<Message[]> => {
+    const response = await api.get<Message[]>(`/api/v1/sessions/${sessionId}/messages/recent`);
+    return response;
+  },
+
+  create: async (sessionId: string, data: any): Promise<Message> => {
+    return api.post(`/api/v1/sessions/${sessionId}/messages`, data);
+  },
+
+  delete: async (messageId: string): Promise<void> => {
+    return api.delete(`/api/v1/messages/${messageId}`);
+  },
+};
+
+// Chat API (streaming)
+export interface ChatStreamEvent {
+  type: 'content' | 'tool_call' | 'tool_result' | 'error' | 'done';
+  content?: string;
+  toolCall?: {
+    id: string;
+    name: string;
+    input: Record<string, any>;
+  };
+  toolResult?: {
+    toolCallId: string;
+    output: string;
+    isError?: boolean;
+  };
+  error?: string;
+}
+
+export const chatApi = {
+  stream: async (
+    sessionId: string,
+    message: string,
+    onEvent: (event: ChatStreamEvent) => void
+  ): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
+      },
+      body: JSON.stringify({ session_id: sessionId, message, stream: true }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Chat request failed');
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error('No response body reader');
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (!data || data === '[DONE]') continue;
+
+            try {
+              const event = JSON.parse(data) as ChatStreamEvent;
+              onEvent(event);
+
+              if (event.type === 'done') {
+                return;
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE event:', data);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
+  send: async (sessionId: string, message: string): Promise<Message> => {
+    return api.post(`/api/v1/chat`, { session_id: sessionId, message, stream: false });
   },
 };
