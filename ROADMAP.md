@@ -105,11 +105,29 @@ backend/
 - [x] `GET /api/v1/agents` - Agent 列表
 - [x] `POST /api/v1/agents` - 创建 Agent
 
-### 3.5 待完成 🔲
-- [ ] 与核心 Agent 集成（调用 internal/agent）
-- [ ] WebSocket 实时通信
-- [ ] 数据库连接池优化
+### 3.5 API Endpoints ✅
+- [x] `POST /api/v1/auth/register` - 注册
+- [x] `POST /api/v1/auth/login` - 登录
+- [x] `POST /api/v1/auth/refresh` - 刷新 Token
+- [x] `GET /api/v1/sessions` - 用户会话列表
+- [x] `POST /api/v1/sessions` - 创建会话
+- [x] `GET /api/v1/agents` - Agent 列表
+- [x] `POST /api/v1/agents` - 创建 Agent
+
+### 3.6 Agent Core Integration ✅
+- [x] `pkg/agent` - 公共 API 包导出
+  - [x] `ChatAgent` - 流式聊天代理
+  - [x] `ConfigFactory` - 代理实例工厂
+  - [x] `EventType` 枚举 - Delta, ToolCall, ToolResult, Error, Done
+  - [x] `Config` - 配置结构体
+- [x] `POST /api/v1/chat` - SSE 流式聊天
+- [x] `WS /ws/chat` - WebSocket 聊天
+- [x] 会话代理缓存
+
+### 3.7 待完成 🔲
 - [ ] 单元测试补充
+- [ ] 集成测试
+- [ ] 数据库连接池优化
 - [ ] Docker 容器化
 
 ---
