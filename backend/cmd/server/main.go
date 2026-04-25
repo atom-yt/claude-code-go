@@ -16,6 +16,7 @@ import (
 	"github.com/atom-yt/atom-ai-platform/backend/internal/handlers"
 	"github.com/atom-yt/atom-ai-platform/backend/internal/repository"
 	"github.com/atom-yt/atom-ai-platform/backend/internal/services"
+	"github.com/atom-yt/claude-code-go/pkg/agent"
 )
 
 func main() {
@@ -28,6 +29,12 @@ func main() {
 	jwtSecret := getEnv("JWT_SECRET", "your-secret-key-change-in-production")
 	dbURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/atom_ai?sslmode=disable")
 	serverAddr := getEnv("SERVER_ADDR", ":8080")
+
+	// AI API configuration
+	apiKey := getEnv("ANTHROPIC_API_KEY", "")
+	baseURL := getEnv("BASE_URL", "")
+	defaultProvider := getEnv("DEFAULT_PROVIDER", "anthropic")
+	defaultModel := getEnv("DEFAULT_MODEL", "claude-sonnet-4-6")
 
 	// Initialize database
 	database, err := db.NewFromURL(context.Background(), dbURL)
@@ -51,12 +58,16 @@ func main() {
 	sessionService := services.NewSessionService(sessionRepo, agentRepo)
 	messageService := services.NewMessageService(messageRepo, sessionRepo)
 
+	// Initialize agent factory
+	agentFactory := agent.NewConfigFactory(apiKey, baseURL, defaultProvider, defaultModel)
+
 	// Initialize router
 	router := handlers.NewRouter(&handlers.Config{
 		AuthService:    authService,
 		AgentService:   agentService,
 		SessionService: sessionService,
 		MessageService: messageService,
+		AgentFactory:   agentFactory,
 	})
 
 	// Create server

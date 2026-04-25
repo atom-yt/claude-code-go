@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/atom-yt/claude-code-go/pkg/agent"
 
 	"github.com/atom-yt/atom-ai-platform/backend/internal/auth"
 	"github.com/atom-yt/atom-ai-platform/backend/internal/services"
@@ -16,15 +17,17 @@ type Router struct {
 	agentHandler  *AgentHandler
 	sessionHandler *SessionHandler
 	messageHandler *MessageHandler
+	chatHandler   *ChatHandler
 	healthHandler *HealthHandler
 }
 
 // Config holds router configuration
 type Config struct {
-	AuthService   *auth.Service
+	AuthService    *auth.Service
 	AgentService  *services.AgentService
 	SessionService *services.SessionService
 	MessageService *services.MessageService
+	AgentFactory   *agent.ConfigFactory
 }
 
 // NewRouter creates a new router with all routes configured
@@ -37,6 +40,7 @@ func NewRouter(cfg *Config) *Router {
 		agentHandler:  NewAgentHandler(cfg.AgentService),
 		sessionHandler: NewSessionHandler(cfg.SessionService),
 		messageHandler: NewMessageHandler(cfg.MessageService),
+		chatHandler:   NewChatHandler(cfg.AgentFactory),
 		healthHandler: NewHealthHandler(),
 	}
 
@@ -97,6 +101,11 @@ func (r *Router) setupRoutes() {
 	protected.HandleFunc("/agents/{id}", r.agentHandler.GetAgent).Methods("GET")
 	protected.HandleFunc("/agents/{id}", r.agentHandler.UpdateAgent).Methods("PUT")
 	protected.HandleFunc("/agents/{id}", r.agentHandler.DeleteAgent).Methods("DELETE")
+
+	// Chat routes (streaming and WebSocket)
+	protected.HandleFunc("/chat", r.chatHandler.HandleChat).Methods("POST")
+	protected.HandleFunc("/chat/stream", r.chatHandler.HandleChat).Methods("POST")
+	r.router.HandleFunc("/ws/chat", r.chatHandler.HandleWebSocket)
 }
 
 // GetRouter returns the underlying mux router
