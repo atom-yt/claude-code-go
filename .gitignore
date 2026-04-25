@@ -1,5 +1,6 @@
 # Binaries
 claude
+gateway
 dist/
 
 # Go build artifacts
