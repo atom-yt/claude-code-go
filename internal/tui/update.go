@@ -14,6 +14,7 @@ import (
 	"github.com/atom-yt/claude-code-go/internal/session"
 	"github.com/atom-yt/claude-code-go/internal/subagent"
 	"github.com/atom-yt/claude-code-go/internal/taskstore"
+	"github.com/atom-yt/claude-code-go/internal/tui/paste"
 )
 
 // spinnerFrames are the animation frames for the waiting spinner.
@@ -228,6 +229,11 @@ func (m Model) handleSubmit() (tea.Model, tea.Cmd) {
 	text := trimSpace(m.input)
 	if text == "" {
 		return m, nil
+	}
+
+	// Check for image paste
+	if img := paste.DetectImage(text); img != nil {
+		return m.handleImagePaste(img)
 	}
 
 	// Save to input history.
@@ -688,4 +694,41 @@ func matchesBracketSequence(s string) bool {
 	}
 
 	return false
+}
+
+// handleImagePaste processes a pasted image file.
+func (m Model) handleImagePaste(img *paste.Image) (tea.Model, tea.Cmd) {
+	// Save to input history for reference
+	fileRef := fmt.Sprintf("[Image: %s, %s]", img.Filename, paste.FormatBytes(img.Size))
+	m.inputHistory = append(m.inputHistory, fileRef)
+	if len(m.inputHistory) > 100 {
+		m.inputHistory = m.inputHistory[1:]
+	}
+
+	m.historyIdx = -1
+	m.inputDraft = ""
+	m.input = ""
+	m.scrollOffset = 0
+
+	// Convert image to markdown format for session
+	// Save image to session directory for markdown reference
+	content := img.FormatAsAttachment()
+
+	m.messages = append(m.messages, ChatMessage{Role: RoleUser, Content: content})
+
+	if m.ag == nil {
+		m.messages = append(m.messages, ChatMessage{
+			Role:    RoleError,
+			Content: "No API key configured. Set ANTHROPIC_API_KEY or use --api-key.",
+		})
+		return m, nil
+	}
+
+	m.messages = append(m.messages, ChatMessage{Role: RoleAssistant, Content: "", Streaming: true})
+	m.status = StatusThinking
+	m.spinnerIdx = 0
+
+	// Send the image attachment text to the agent
+	eventCh := m.ag.Query(context.Background(), content)
+	return m, tea.Batch(waitForEvent(eventCh), spinnerTick())
 }
