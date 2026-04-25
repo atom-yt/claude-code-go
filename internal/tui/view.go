@@ -9,6 +9,11 @@ import (
 
 const inputPrefix = "> "
 
+// clearScreen returns the ANSI escape sequence to clear the screen and move cursor to home.
+func clearScreen() string {
+	return "\x1b[2J\x1b[H"
+}
+
 // renderLogo renders the ATOM logo header.
 func (m Model) renderLogo() string {
 	// ATOM logo - ASCII art with fixed column width (6 chars each)
@@ -46,7 +51,9 @@ func (m Model) View() string {
 	autocomplete := m.renderAutocomplete()
 	status := m.renderStatusBar()
 
-	parts := []string{logo, history, divider, input}
+	// Clear screen first (for non-alt-screen mode compatibility)
+	screen := clearScreen()
+	parts := []string{screen, logo, history, divider, input}
 	if autocomplete != "" {
 		parts = append(parts, autocomplete)
 	}
