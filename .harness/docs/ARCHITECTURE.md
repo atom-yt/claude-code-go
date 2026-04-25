@@ -13,8 +13,8 @@ This project follows a strict layered architecture to maintain separation of con
 ```
 Layer 0 (Foundation):  pkg/
 Layer 1 (Core):        internal/messages/, internal/pathutil/, internal/urlutil/
-Layer 2 (Services):    internal/config/, internal/permissions/, internal/hooks/, internal/memory/, internal/providers/, internal/compact/
-Layer 3 (Tools):      internal/tools/, internal/api/, internal/commands/, internal/skills/, internal/mcp/, internal/prompt/
+Layer 2 (Services):    internal/config/, internal/permissions/, internal/hooks/, internal/memory/, internal/providers/, internal/compact/, internal/mcpresource/, internal/plugin/, internal/sandbox/
+Layer 3 (Tools):       internal/tools/, internal/api/, internal/commands/, internal/skills/, internal/mcp/, internal/prompt/, internal/cmdutil/
 Layer 4 (Orchestration): internal/agent/, internal/tui/, internal/session/, internal/subagent/, internal/runtime/, internal/taskstore/
 ```
 
@@ -69,6 +69,15 @@ Message compaction services.
 - MicroCompactor: Heuristic-based history compression
 - Reduces token usage by truncating and summarizing
 
+### internal/mcpresource/
+MCP resource management and handling.
+
+### internal/plugin/
+Plugin system and plugin lifecycle management.
+
+### internal/sandbox/
+Sandboxed execution environment for safe tool execution.
+
 ### internal/tools/
 Tool implementations (Read, Write, Bash, Glob, Grep, WebSearch, etc.).
 - WebSearch: DuckDuckGo HTML search for real-time information
@@ -87,6 +96,9 @@ Model Context Protocol client implementation.
 
 ### internal/prompt/
 Prompt building and context management.
+
+### internal/cmdutil/
+Command-line utility functions shared across CLI implementation.
 
 ### internal/agent/
 Agent main loop and orchestration.

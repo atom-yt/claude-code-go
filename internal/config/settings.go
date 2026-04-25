@@ -64,6 +64,7 @@ func Load(flags CLIFlags) Settings {
 	perms := mergePermissions(user.Permissions, project.Permissions)
 	hooksCfg := mergeHooks(user.Hooks, project.Hooks)
 	mcpServers := mergeMCPServers(user.MCPServers, project.MCPServers)
+	interfacesCfg := mergeInterfaces(user.Interfaces, project.Interfaces)
 
 	// Load compact configuration with project override
 	autoCompact := true
@@ -156,6 +157,7 @@ func Load(flags CLIFlags) Settings {
 		AutoMemoryDirectory:    autoMemoryDirectory,
 		MinConsolidateHours:    minConsolidateHours,
 		MinConsolidateSessions: minConsolidateSessions,
+		Interfaces:            interfacesCfg,
 	}
 }
 
@@ -271,4 +273,16 @@ func providerEnvURL(provider string) string {
 		return os.Getenv("CODEX_BASE_URL")
 	}
 	return ""
+}
+
+// mergeInterfaces merges interface provider configs; project entries override user entries.
+func mergeInterfaces(user, project map[string]InterfaceProviderConfig) map[string]InterfaceProviderConfig {
+	out := make(map[string]InterfaceProviderConfig)
+	for k, v := range user {
+		out[k] = v
+	}
+	for k, v := range project {
+		out[k] = v
+	}
+	return out
 }

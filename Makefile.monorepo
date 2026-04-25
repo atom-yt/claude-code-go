@@ -1,0 +1,137 @@
+# Atom AI Platform Makefile
+
+.PHONY: help build test clean dev backend frontend install
+
+# Variables
+GO := go
+NPM := npm
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
+help: ## Show this help message
+	@echo "$(BLUE)Atom AI Platform - Available Commands:$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+
+# Backend commands
+backend-build: ## Build the backend server
+	@echo "$(BLUE)Building backend...$(NC)"
+	cd backend && $(GO) build -o bin/server cmd/server/main.go
+
+backend-test: ## Run backend tests
+	@echo "$(BLUE)Running backend tests...$(NC)"
+	cd backend && $(GO) test -v ./...
+
+backend-dev: ## Run backend in development mode
+	@echo "$(BLUE)Starting backend development server...$(NC)"
+	cd backend && $(GO) run cmd/server/main.go
+
+backend-deps: ## Install backend dependencies
+	@echo "$(BLUE)Installing backend dependencies...$(NC)"
+	cd backend && $(GO) mod download
+	cd backend && $(GO) mod tidy
+
+# Frontend commands
+frontend-build: ## Build the frontend
+	@echo "$(BLUE)Building frontend...$(NC)"
+	cd frontend && $(NPM) run build
+
+frontend-test: ## Run frontend tests
+	@echo "$(BLUE)Running frontend tests...$(NC)"
+	cd frontend && $(NPM) test
+
+frontend-dev: ## Run frontend in development mode
+	@echo "$(BLUE)Starting frontend development server...$(NC)"
+	cd frontend && $(NPM) run dev
+
+frontend-deps: ## Install frontend dependencies
+	@echo "$(BLUE)Installing frontend dependencies...$(NC)"
+	cd frontend && $(NPM) install
+
+# Core CLI commands
+cli-build: ## Build the CLI tool
+	@echo "$(BLUE)Building CLI tool...$(NC)"
+	$(GO) build -o bin/claude cmd/claude/main.go
+
+cli-test: ## Run CLI tests
+	@echo "$(BLUE)Running CLI tests...$(NC)"
+	$(GO) test ./...
+
+# Shared commands
+shared-types: ## Generate shared types (to be implemented)
+	@echo "$(YELLOW)Shared type generation not yet implemented$(NC)"
+
+# Combined commands
+build: cli-build backend-build ## Build all components (CLI, backend)
+	@echo "$(GREEN)Build complete!$(NC)"
+
+test: cli-test backend-test ## Run all tests (CLI, backend)
+	@echo "$(GREEN)All tests passed!$(NC)"
+
+deps: backend-deps frontend-deps ## Install all dependencies
+	@echo "$(GREEN)Dependencies installed!$(NC)"
+
+dev: ## Start all services in development mode (requires terminal multiplexer)
+	@echo "$(YELLOW)Starting development services...$(NC)"
+	@echo "$(BLUE)Use 'tmux' or run services in separate terminals$(NC)"
+	@echo ""
+	@echo "$(GREEN)Backend:$(NC) make backend-dev"
+	@echo "$(GREEN)Frontend:$(NC) make frontend-dev"
+	@echo "$(GREEN)CLI:$(NC) ./bin/claude"
+
+# Database commands
+db-migrate: ## Run database migrations (to be implemented)
+	@echo "$(YELLOW)Database migrations not yet implemented$(NC)"
+
+db-rollback: ## Rollback database migrations (to be implemented)
+	@echo "$(YELLOW)Database rollback not yet implemented$(NC)"
+
+# Docker commands
+docker-up: ## Start Docker services (to be implemented)
+	@echo "$(YELLOW)Docker services not yet configured$(NC)"
+
+docker-down: ## Stop Docker services (to be implemented)
+	@echo "$(YELLOW)Docker services not yet configured$(NC)"
+
+docker-build: ## Build Docker images (to be implemented)
+	@echo "$(YELLOW)Docker build not yet configured$(NC)"
+
+# Utility commands
+clean: ## Clean build artifacts
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
+	rm -rf backend/bin/
+	rm -rf frontend/.next/
+	rm -rf bin/
+	@echo "$(GREEN)Clean complete!$(NC)"
+
+format: ## Format code (Go and TypeScript)
+	@echo "$(BLUE)Formatting code...$(NC)"
+	$(GO) fmt ./...
+	cd backend && $(GO) fmt ./...
+	cd frontend && $(NPM) run format 2>/dev/null || echo "$(YELLOW)No format script found in frontend$(NC)"
+
+lint: ## Run linters
+	@echo "$(BLUE)Running linters...$(NC)"
+	$(GO) vet ./...
+	cd backend && $(GO) vet ./...
+	cd frontend && $(NPM) run lint 2>/dev/null || echo "$(YELLOW)No lint script found in frontend$(NC)"
+
+check: format lint test ## Run format, lint, and test
+
+# Setup commands
+setup: deps ## Initial project setup
+	@echo "$(GREEN)Setup complete!$(NC)"
+	@echo ""
+	@echo "$(BLUE)Next steps:$(NC)"
+	@echo "  1. Create a .env file in backend/"
+	@echo "  2. Set up PostgreSQL database"
+	@echo "  3. Run migrations (when implemented)"
+	@echo "  4. Start services: make dev"
+
+# CI/CD commands
+ci: clean deps format lint test ## Run CI pipeline
+	@echo "$(GREEN)CI pipeline passed!$(NC)"

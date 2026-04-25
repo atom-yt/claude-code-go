@@ -24,6 +24,9 @@ type Settings struct {
 	AutoMemoryDirectory    string // Optional custom memory directory path
 	MinConsolidateHours    int    // Min hours since last consolidation (default: 24)
 	MinConsolidateSessions int    // Min sessions to trigger consolidation (default: 5)
+
+	// Interface providers (Feishu, WeChat, Telegram, etc.)
+	Interfaces map[string]InterfaceProviderConfig
 }
 
 // PermissionsConfig mirrors the permissions block in settings.json.
@@ -74,6 +77,14 @@ const (
 	TrustUntrusted = "untrusted" // Prompt for all operations (default)
 )
 
+// InterfaceProviderConfig describes configuration for an interface provider.
+// This allows different providers (Feishu, WeChat, Telegram, etc.) to be configured.
+type InterfaceProviderConfig struct {
+	// Common provider configuration
+	Enabled bool `json:"enabled"` // Whether this provider is enabled
+	Config  map[string]any `json:"config"` // Provider-specific configuration
+}
+
 // settingsFile mirrors the full JSON structure of ~/.claude/settings.json.
 type settingsFile struct {
 	Model       string                         `json:"model"`
@@ -97,4 +108,7 @@ type settingsFile struct {
 	AutoMemoryDirectory    string `json:"autoMemoryDirectory"`
 	MinConsolidateHours    int    `json:"minConsolidateHours"`
 	MinConsolidateSessions int    `json:"minConsolidateSessions"`
+
+	// Interface providers (Feishu, WeChat, Telegram, etc.)
+	Interfaces map[string]InterfaceProviderConfig `json:"interfaces"`
 }
