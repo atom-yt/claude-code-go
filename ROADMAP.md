@@ -192,17 +192,48 @@ frontend/src/components/agent/
 
 ---
 
-## Phase 5: 集成与部署 🔲 待开始
+## Phase 5: 集成与部署 ✅ 100%
 
-### 5.1 服务集成
-- [ ] Frontend ↔ Backend API 对接
-- [ ] Backend ↔ Agent Core 集成
-- [ ] Gateway ↔ Backend 状态同步
+### 5.1 服务集成 ✅
+- [x] Frontend Session 类型修复 (agentId, status)
+- [x] Frontend API 分页响应处理 (ListResponse)
+- [x] Frontend 消息 API (messagesApi)
+- [x] Frontend 流式聊天 API (chatApi.stream)
+- [x] Backend 认证中间件集成 (JWT 验证)
 
-### 5.2 部署配置
-- [ ] Docker 容器化
-- [ ] 环境变量配置
-- [ ] 健康检查与监控
+### 5.2 部署配置 ✅
+- [x] Docker 容器化 (Backend, Frontend, Gateway)
+- [x] Docker Compose 多服务编排 (postgres, backend, frontend, gateway)
+- [x] 环境变量配置 (.env.example)
+- [x] 健康检查与监控 (healthcheck for all services)
+
+---
+
+## Phase 6: 测试与优化 🔲 待开始
+
+### 6.1 集成测试
+- [ ] Frontend ↔ Backend 端到端测试
+- [ ] 用户认证流程测试
+- [ ] Agent 创建与配置测试
+- [ ] Session 管理测试
+- [ ] 聊天流式响应测试
+
+### 6.2 API 文档
+- [ ] OpenAPI/Swagger 规范
+- [ ] API 交互式文档
+- [ ] 前端 API 客户端文档
+
+### 6.3 监控与日志
+- [ ] 结构化日志 (zap/slog)
+- [ ] Prometheus 指标导出
+- [ ] 分布式追踪 (OpenTelemetry)
+- [ ] 错误追踪 (Sentry)
+
+### 6.4 性能优化
+- [ ] 数据库连接池优化
+- [ ] 缓存层 (Redis)
+- [ ] CDN 静态资源
+- [ ] 前端代码分割
 
 ---
 
@@ -214,7 +245,8 @@ frontend/src/components/agent/
 | **Phase 2** | Gateway & 接口系统 | ✅ 完成 | 100% |
 | **Phase 3** | Monorepo Backend | ✅ 完成 | 100% |
 | **Phase 4** | Frontend Web 应用 | ✅ 完成 | 100% |
-| **Phase 5** | 集成与部署 | 🔲 待开始 | 0% |
+| **Phase 5** | 集成与部署 | ✅ 完成 | 100% |
+| **Phase 6** | 测试与优化 | 🔲 待开始 | 0% |
 
 ---
 
@@ -264,6 +296,14 @@ go test ./...    # 运行后端测试
 cd frontend && npm run dev    # 启动开发服务器
 npm run build      # 构建生产版本
 npm test         # 运行前端测试
+
+# Docker 部署
+cp .env.example .env      # 准备环境变量
+# 编辑 .env 填写 API Keys
+docker-compose up -d        # 启动所有服务
+docker-compose ps           # 查看服务状态
+docker-compose logs -f       # 查看日志
+docker-compose down -v       # 停止并清理
 ```
 
 ---
@@ -271,6 +311,6 @@ npm test         # 运行前端测试
 ## 下一步建议
 
 1. **集成测试** - Frontend 与 Backend API 端到端联调
-2. **容器化** - Docker Compose 多服务编排
-3. **文档完善** - API 文档 (OpenAPI/Swagger)
-4. **监控与日志** - 添加结构化日志和监控指标
+2. **API 文档** - OpenAPI/Swagger 规范与交互式文档
+3. **监控与日志** - 添加结构化日志和监控指标
+4. **性能优化** - 缓存层、数据库连接池、前端代码分割
