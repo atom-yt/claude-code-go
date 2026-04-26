@@ -76,6 +76,11 @@ type ChatAgent struct {
 	system   string
 }
 
+// AgentFactory defines interface for creating ChatAgent instances
+type AgentFactory interface {
+	Create(ctx context.Context, cfg *Config) (*ChatAgent, error)
+}
+
 // ConfigFactory creates ChatAgent instances with given configuration
 type ConfigFactory struct {
 	defaultAPIKey    string

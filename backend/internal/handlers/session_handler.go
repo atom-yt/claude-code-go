@@ -10,11 +10,11 @@ import (
 
 // SessionHandler handles session-related HTTP requests
 type SessionHandler struct {
-	sessionService *services.SessionService
+	sessionService services.SessionServiceInterface
 }
 
 // NewSessionHandler creates a new session handler
-func NewSessionHandler(sessionService *services.SessionService) *SessionHandler {
+func NewSessionHandler(sessionService services.SessionServiceInterface) *SessionHandler {
 	return &SessionHandler{
 		sessionService: sessionService,
 	}

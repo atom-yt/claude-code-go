@@ -10,11 +10,11 @@ import (
 
 // MessageHandler handles message-related HTTP requests
 type MessageHandler struct {
-	messageService *services.MessageService
+	messageService services.MessageServiceInterface
 }
 
 // NewMessageHandler creates a new message handler
-func NewMessageHandler(messageService *services.MessageService) *MessageHandler {
+func NewMessageHandler(messageService services.MessageServiceInterface) *MessageHandler {
 	return &MessageHandler{
 		messageService: messageService,
 	}

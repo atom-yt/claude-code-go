@@ -19,12 +19,12 @@ const (
 
 // ChatHandler handles chat requests
 type ChatHandler struct {
-	agentFactory *agent.ConfigFactory
+	agentFactory agent.AgentFactory
 	upgrader    *websocket.Upgrader
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(agentFactory *agent.ConfigFactory) *ChatHandler {
+func NewChatHandler(agentFactory agent.AgentFactory) *ChatHandler {
 	return &ChatHandler{
 		agentFactory: agentFactory,
 		upgrader: &websocket.Upgrader{

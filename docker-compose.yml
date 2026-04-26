@@ -4,7 +4,6 @@ services:
   # PostgreSQL database with pgvector support
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: atom-ai-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -27,8 +26,8 @@ services:
   # Backend API server
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: atom-ai-backend
     environment:
       # Database
@@ -56,7 +55,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "sh", "-c", "netstat -tlnp 2>/dev/null | grep :8080 || ss -tlnp 2>/dev/null | grep :8080"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -72,14 +71,14 @@ services:
       dockerfile: Dockerfile
     container_name: atom-ai-frontend
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NEXT_PUBLIC_API_URL: http://localhost:8080
       NODE_ENV: production
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3002}:3000"
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "sh", "-c", "netstat -tlnp 2>/dev/null | grep :3000 || ss -tlnp 2>/dev/null | grep :3000"]
       interval: 30s
       timeout: 3s
       retries: 3

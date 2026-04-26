@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import dynamic from 'next/dynamic';
 import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
 
 const ClientLayout = dynamic(() => import('@/components/layout/AppLayout'), {
   ssr: false,
@@ -26,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

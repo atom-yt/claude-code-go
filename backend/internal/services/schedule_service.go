@@ -12,11 +12,11 @@ var ErrScheduleNotFound = errors.New("scheduled task not found")
 
 // ScheduleService handles scheduled task business logic
 type ScheduleService struct {
-	repo *repository.ScheduleRepository
+	repo repository.ScheduleRepositoryI
 }
 
 // NewScheduleService creates a new schedule service
-func NewScheduleService(repo *repository.ScheduleRepository) *ScheduleService {
+func NewScheduleService(repo repository.ScheduleRepositoryI) *ScheduleService {
 	return &ScheduleService{repo: repo}
 }
 

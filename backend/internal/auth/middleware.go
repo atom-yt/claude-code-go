@@ -11,9 +11,9 @@ import (
 type contextKey string
 
 const (
-	UserIDKey      contextKey = "user_id"
-	UserEmailKey   contextKey = "user_email"
-	UserRoleKey    contextKey = "user_role"
+	UserIDKey    contextKey = "user_id"
+	UserEmailKey contextKey = "user_email"
+	UserRoleKey  contextKey = "user_role"
 )
 
 // AuthMiddleware validates JWT token and adds user context
@@ -96,7 +96,7 @@ func (s *Service) RoleMiddleware(requiredRole Role) func(http.Handler) http.Hand
 	}
 }
 
-// extractBearerToken extracts the bearer token from Authorization header
+// extractBearerToken extracts => bearer token from Authorization header
 func extractBearerToken(authHeader string) (string, error) {
 	const prefix = "Bearer "
 	if !strings.HasPrefix(authHeader, prefix) {

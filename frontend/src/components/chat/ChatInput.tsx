@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Square } from 'lucide-react';
 import { ModelSelector } from './ModelSelector';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  onStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, disabled, placeholder }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [model, setModel] = useState('claude-sonnet-4');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -23,6 +24,10 @@ export function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+  };
+
+  const handleStop = () => {
+    if (onStop) onStop();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

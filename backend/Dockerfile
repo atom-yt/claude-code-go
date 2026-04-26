@@ -7,14 +7,15 @@ FROM golang:1.22-alpine AS builder
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
 
-WORKDIR /app
+WORKDIR /workspace
 
-# Copy go mod files first for better caching
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy entire project for replace dependencies
+COPY . ./
 
-# Copy source code
-COPY . .
+WORKDIR /workspace/backend
+
+# Set GOPROXY to use Chinese mirror
+ENV GOPROXY=https://goproxy.cn,direct
 
 # Build the server binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server
@@ -23,12 +24,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget
 
 WORKDIR /root/
 
 # Copy binary from builder
-COPY --from=builder /app/server .
+COPY --from=builder /workspace/backend/server .
 
 # Expose port
 EXPOSE 8080

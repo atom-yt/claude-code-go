@@ -25,6 +25,7 @@ var layers = map[string]int{
 	"internal/mcpresource/":       2,
 	"internal/plugin/":           2,
 	"internal/sandbox/":          2,
+	"internal/interfaces/":       2,
 	"internal/tools/":            3,
 	"internal/api/":              3,
 	"internal/commands/":        3,
@@ -38,6 +39,7 @@ var layers = map[string]int{
 	"internal/subagent/":         4,
 	"internal/runtime/":          4,
 	"internal/taskstore/":        4,
+	"internal/apiserver/":       4,
 }
 
 // getLayer returns the layer number for a given path, or -1 if not in layers

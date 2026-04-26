@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Book, Zap, Package, Settings, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Book, Zap, Package, Settings, Plus, MessageSquare, Trash2, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionsStore } from '@/stores/sessionsStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
 
 const navItems = [
@@ -18,6 +19,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { sessions, fetchSessions, selectSession, deleteSession, selectedSession } = useSessionsStore();
+  const { user, logout } = useAuthStore();
 
   useEffect(() => {
     fetchSessions();
@@ -31,6 +33,11 @@ export function Sidebar() {
   const handleSelectSession = (session: any) => {
     selectSession(session);
     router.push(`/chat/${session.id}`);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
   };
 
   return (

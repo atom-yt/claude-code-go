@@ -10,11 +10,11 @@ import (
 
 // SkillHandler handles skill-related HTTP requests
 type SkillHandler struct {
-	skillService *services.SkillService
+	skillService services.SkillServiceInterface
 }
 
 // NewSkillHandler creates a new skill handler
-func NewSkillHandler(skillService *services.SkillService) *SkillHandler {
+func NewSkillHandler(skillService services.SkillServiceInterface) *SkillHandler {
 	return &SkillHandler{
 		skillService: skillService,
 	}

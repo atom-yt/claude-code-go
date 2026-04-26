@@ -7,16 +7,10 @@ export interface User {
   updatedAt: string;
 }
 
-export interface AuthToken {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  tokenType: string;
-}
-
 export interface AuthResponse {
   user: User;
-  token: AuthToken;
+  access_token: string;
+  refresh_token: string;
 }
 
 // Agent types

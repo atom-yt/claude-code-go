@@ -13,9 +13,9 @@ This project follows a strict layered architecture to maintain separation of con
 ```
 Layer 0 (Foundation):  pkg/
 Layer 1 (Core):        internal/messages/, internal/pathutil/, internal/urlutil/
-Layer 2 (Services):    internal/config/, internal/permissions/, internal/hooks/, internal/memory/, internal/providers/, internal/compact/, internal/mcpresource/, internal/plugin/, internal/sandbox/
+Layer 2 (Services):    internal/config/, internal/permissions/, internal/hooks/, internal/memory/, internal/providers/, internal/compact/, internal/mcpresource/, internal/plugin/, internal/sandbox/, internal/interfaces/
 Layer 3 (Tools):       internal/tools/, internal/api/, internal/commands/, internal/skills/, internal/mcp/, internal/prompt/, internal/cmdutil/
-Layer 4 (Orchestration): internal/agent/, internal/tui/, internal/session/, internal/subagent/, internal/runtime/, internal/taskstore/
+Layer 4 (Orchestration): internal/agent/, internal/tui/, internal/session/, internal/subagent/, internal/runtime/, internal/taskstore/, internal/apiserver/
 ```
 
 ### Dependency Rules
@@ -37,6 +37,7 @@ Layer 4 (Orchestration): internal/agent/, internal/tui/, internal/session/, inte
 ### pkg/
 Foundation packages with no internal dependencies.
 - `pkg/anthropic/` - Anthropic API client
+- `pkg/agent/` - Reusable agent package for embedded usage
 
 ### internal/messages/
 Message types and data structures used throughout the application.
@@ -78,6 +79,12 @@ Plugin system and plugin lifecycle management.
 ### internal/sandbox/
 Sandboxed execution environment for safe tool execution.
 
+### internal/interfaces/
+Interface provider registry for external platform integrations.
+- Supports Feishu, WeChat, Telegram, etc.
+- Handles platform-specific message formats
+- Manages platform-specific features (cards, reactions)
+
 ### internal/tools/
 Tool implementations (Read, Write, Bash, Glob, Grep, WebSearch, etc.).
 - WebSearch: DuckDuckGo HTML search for real-time information
@@ -117,6 +124,13 @@ Runtime state management.
 
 ### internal/taskstore/
 Durable task storage for plan mode.
+
+### internal/apiserver/
+HTTP API server for external Agent access.
+- REST API endpoints for session management and chat
+- Supports deployment modes: single, per-session, pool
+- Multi-instance deployment with load balancing
+- Server-Sent Events (SSE) for streaming responses
 
 ## Tool System
 

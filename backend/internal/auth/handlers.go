@@ -1,18 +1,30 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 )
 
+// AuthService defines the interface for authentication operations
+type AuthService interface {
+	// Handler methods
+	Register(ctx context.Context, req *RegisterRequest) (*AuthResponse, error)
+	Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error)
+	Refresh(refreshToken string) (*RefreshResponse, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
+	// Middleware method
+	AuthMiddleware(next http.Handler) http.Handler
+}
+
 // Handler provides HTTP handlers for authentication
 type Handler struct {
-	service *Service
+	service AuthService
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(service *Service) *Handler {
+func NewHandler(service AuthService) *Handler {
 	return &Handler{
 		service: service,
 	}

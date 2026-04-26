@@ -12,11 +12,11 @@ var ErrArtifactNotFound = errors.New("artifact not found")
 
 // ArtifactService handles artifact business logic
 type ArtifactService struct {
-	repo *repository.ArtifactRepository
+	repo repository.ArtifactRepositoryI
 }
 
 // NewArtifactService creates a new artifact service
-func NewArtifactService(repo *repository.ArtifactRepository) *ArtifactService {
+func NewArtifactService(repo repository.ArtifactRepositoryI) *ArtifactService {
 	return &ArtifactService{repo: repo}
 }
 

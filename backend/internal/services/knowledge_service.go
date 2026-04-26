@@ -12,11 +12,11 @@ var ErrKnowledgeNotFound = errors.New("knowledge not found")
 
 // KnowledgeService handles knowledge base business logic
 type KnowledgeService struct {
-	repo *repository.KnowledgeRepository
+	repo repository.KnowledgeRepositoryI
 }
 
 // NewKnowledgeService creates a new knowledge service
-func NewKnowledgeService(repo *repository.KnowledgeRepository) *KnowledgeService {
+func NewKnowledgeService(repo repository.KnowledgeRepositoryI) *KnowledgeService {
 	return &KnowledgeService{repo: repo}
 }
 

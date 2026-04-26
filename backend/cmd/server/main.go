@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 
 	"github.com/atom-yt/atom-ai-platform/backend/internal/auth"
@@ -44,6 +45,11 @@ func main() {
 	defer database.Close()
 
 	log.Println("Database connected successfully")
+
+	// Run migrations (simplified: execute SQL directly)
+	if err := runMigrations(database.Pool()); err != nil {
+		log.Printf("Migration warning: %v", err)
+	}
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(database.Pool())
@@ -122,4 +128,114 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// runMigrations executes SQL migration files directly
+func runMigrations(db *pgxpool.Pool) error {
+	// Create tables if they don't exist
+	tables := map[string]string{
+		"users": `CREATE TABLE IF NOT EXISTS users (
+			id VARCHAR(255) PRIMARY KEY,
+			email VARCHAR(255) UNIQUE NOT NULL,
+			password_hash VARCHAR(255) NOT NULL,
+			display_name VARCHAR(255),
+			role VARCHAR(50) DEFAULT 'user',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"agents": `CREATE TABLE IF NOT EXISTS agents (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			description VARCHAR(500),
+			system_prompt TEXT,
+			model VARCHAR(255) NOT NULL,
+			provider VARCHAR(50) NOT NULL,
+			temperature NUMERIC DEFAULT 0.7,
+			max_tokens INT DEFAULT 4096,
+			tools JSONB DEFAULT '[]'::jsonb,
+			knowledge_ids JSONB DEFAULT '[]'::jsonb,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"chat_sessions": `CREATE TABLE IF NOT EXISTS chat_sessions (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			agent_id VARCHAR(255),
+			title VARCHAR(500) DEFAULT 'New Chat',
+			status VARCHAR(50) DEFAULT 'active',
+			messages JSONB DEFAULT '[]',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"messages": `CREATE TABLE IF NOT EXISTS messages (
+			id VARCHAR(255) PRIMARY KEY,
+			session_id VARCHAR(255) NOT NULL,
+			role VARCHAR(50) DEFAULT 'user',
+			content TEXT,
+			tool_calls JSONB,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"skills": `CREATE TABLE IF NOT EXISTS skills (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			category VARCHAR(50),
+			enabled BOOLEAN DEFAULT true,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"artifacts": `CREATE TABLE IF NOT EXISTS artifacts (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			session_id VARCHAR(255),
+			content TEXT NOT NULL,
+			type VARCHAR(50) DEFAULT 'code',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"scheduled_tasks": `CREATE TABLE IF NOT EXISTS scheduled_tasks (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			session_id VARCHAR(255),
+			name VARCHAR(255) NOT NULL,
+			message TEXT,
+			cron_expression VARCHAR(100),
+			enabled BOOLEAN DEFAULT true,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"knowledge_bases": `CREATE TABLE IF NOT EXISTS knowledge_bases (
+			id VARCHAR(255) PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"knowledge_documents": `CREATE TABLE IF NOT EXISTS knowledge_documents (
+			id VARCHAR(255) PRIMARY KEY,
+			base_id VARCHAR(255) NOT NULL,
+			content TEXT NOT NULL,
+			metadata JSONB,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+		"knowledge_chunks": `CREATE TABLE IF NOT EXISTS knowledge_chunks (
+			id VARCHAR(255) PRIMARY KEY,
+			document_id VARCHAR(255) NOT NULL,
+			content TEXT NOT NULL,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);`,
+	}
+
+	for tableName, sql := range tables {
+		if _, err := db.Exec(context.Background(), sql); err != nil {
+			log.Printf("Failed to create table %s: %v", tableName, err)
+		} else {
+			log.Printf("Created table: %s", tableName)
+		}
+	}
+
+	return nil
 }

@@ -14,14 +14,14 @@ var (
 
 // MessageService handles message business logic
 type MessageService struct {
-	messageRepo  *repository.MessageRepository
-	sessionRepo  *repository.SessionRepository
+	messageRepo  repository.MessageRepositoryI
+	sessionRepo  repository.SessionRepositoryI
 }
 
 // NewMessageService creates a new message service
 func NewMessageService(
-	messageRepo *repository.MessageRepository,
-	sessionRepo *repository.SessionRepository,
+	messageRepo repository.MessageRepositoryI,
+	sessionRepo repository.SessionRepositoryI,
 ) *MessageService {
 	return &MessageService{
 		messageRepo: messageRepo,

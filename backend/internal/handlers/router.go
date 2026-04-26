@@ -13,7 +13,7 @@ import (
 // Router manages all HTTP routes
 type Router struct {
 	router           *mux.Router
-	authService      *auth.Service
+	authService      auth.AuthService
 	authHandler      *auth.Handler
 	agentHandler     *AgentHandler
 	sessionHandler   *SessionHandler
@@ -28,15 +28,15 @@ type Router struct {
 
 // Config holds router configuration
 type Config struct {
-	AuthService      *auth.Service
-	AgentService     *services.AgentService
-	SessionService   *services.SessionService
-	MessageService   *services.MessageService
-	SkillService     *services.SkillService
-	ArtifactService  *services.ArtifactService
-	ScheduleService  *services.ScheduleService
-	KnowledgeService *services.KnowledgeService
-	AgentFactory     *agent.ConfigFactory
+	AuthService      auth.AuthService
+	AgentService     services.AgentServiceInterface
+	SessionService   services.SessionServiceInterface
+	MessageService   services.MessageServiceInterface
+	SkillService     services.SkillServiceInterface
+	ArtifactService  services.ArtifactServiceInterface
+	ScheduleService  services.ScheduleServiceInterface
+	KnowledgeService services.KnowledgeServiceInterface
+	AgentFactory     agent.AgentFactory
 }
 
 // NewRouter creates a new router with all routes configured
@@ -76,8 +76,11 @@ func (r *Router) setupRoutes() {
 	// Health check
 	r.router.HandleFunc("/health", r.healthHandler.Health).Methods("GET")
 
-	// API routes
+	// API routes - handle all OPTIONS requests for CORS preflight
 	api := r.router.PathPrefix("/api/v1").Subrouter()
+
+	// Global OPTIONS handler for all API paths
+	api.PathPrefix("/{path:.*}").HandlerFunc(handleOptions).Methods("OPTIONS")
 
 	// Auth routes (no authentication required)
 	api.HandleFunc("/auth/register", r.authHandler.HandleRegister).Methods("POST")
@@ -205,4 +208,12 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+// handleOptions handles CORS preflight OPTIONS requests
+func handleOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.WriteHeader(http.StatusOK)
 }

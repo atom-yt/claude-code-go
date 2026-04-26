@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { Session, Message, SessionsState } from '@/types';
-import { sessionsApi, messagesApi } from '@/lib/api';
+import { sessionsApi, messagesApi, agentsApi } from '@/lib/api';
+
+// Default agent ID (system default)
+const DEFAULT_AGENT_ID = '00000000-0000-0000-0000-000000000001';
 
 interface SessionsStore extends SessionsState {
   fetchSessions: () => Promise<void>;
@@ -49,7 +52,9 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
   createSession: async (data) => {
     set({ isLoading: true, error: null });
     try {
-      const session = await sessionsApi.create(data);
+      // Use provided agentId or default agent
+      const agentId = data.agentId || DEFAULT_AGENT_ID;
+      const session = await sessionsApi.create({ ...data, agentId });
       set((state) => ({
         sessions: [session, ...state.sessions],
         isLoading: false,

@@ -9,11 +9,11 @@ import (
 
 // AgentService handles agent business logic
 type AgentService struct {
-	repo *repository.AgentRepository
+	repo repository.AgentRepositoryI
 }
 
 // NewAgentService creates a new agent service
-func NewAgentService(repo *repository.AgentRepository) *AgentService {
+func NewAgentService(repo repository.AgentRepositoryI) *AgentService {
 	return &AgentService{repo: repo}
 }
 

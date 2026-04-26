@@ -10,11 +10,11 @@ import (
 
 // AgentHandler handles agent-related HTTP requests
 type AgentHandler struct {
-	agentService *services.AgentService
+	agentService services.AgentServiceInterface
 }
 
 // NewAgentHandler creates a new agent handler
-func NewAgentHandler(agentService *services.AgentService) *AgentHandler {
+func NewAgentHandler(agentService services.AgentServiceInterface) *AgentHandler {
 	return &AgentHandler{
 		agentService: agentService,
 	}

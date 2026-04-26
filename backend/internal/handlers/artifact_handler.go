@@ -10,11 +10,11 @@ import (
 
 // ArtifactHandler handles artifact-related HTTP requests
 type ArtifactHandler struct {
-	artifactService *services.ArtifactService
+	artifactService services.ArtifactServiceInterface
 }
 
 // NewArtifactHandler creates a new artifact handler
-func NewArtifactHandler(artifactService *services.ArtifactService) *ArtifactHandler {
+func NewArtifactHandler(artifactService services.ArtifactServiceInterface) *ArtifactHandler {
 	return &ArtifactHandler{
 		artifactService: artifactService,
 	}

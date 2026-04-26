@@ -10,11 +10,11 @@ import (
 
 // KnowledgeHandler handles knowledge base HTTP requests
 type KnowledgeHandler struct {
-	knowledgeService *services.KnowledgeService
+	knowledgeService services.KnowledgeServiceInterface
 }
 
 // NewKnowledgeHandler creates a new knowledge handler
-func NewKnowledgeHandler(knowledgeService *services.KnowledgeService) *KnowledgeHandler {
+func NewKnowledgeHandler(knowledgeService services.KnowledgeServiceInterface) *KnowledgeHandler {
 	return &KnowledgeHandler{
 		knowledgeService: knowledgeService,
 	}

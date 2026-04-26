@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "generated_at": "2026-04-25T03:35:00Z",
+  "generated_at": "2026-04-26T02:00:00Z",
   "language": "go",
   "framework": "cobra-bubbletea",
   "layer_mapping": {
     "0": ["pkg/"],
     "1": ["internal/messages/", "internal/pathutil/", "internal/urlutil/"],
-    "2": ["internal/config/", "internal/permissions/", "internal/hooks/", "internal/memory/", "internal/providers/", "internal/compact/", "internal/mcpresource/", "internal/plugin/", "internal/sandbox/"],
+    "2": ["internal/config/", "internal/permissions/", "internal/hooks/", "internal/memory/", "internal/providers/", "internal/compact/", "internal/mcpresource/", "internal/plugin/", "internal/sandbox/", "internal/interfaces/"],
     "3": ["internal/tools/", "internal/api/", "internal/commands/", "internal/skills/", "internal/mcp/", "internal/prompt/", "internal/cmdutil/"],
-    "4": ["internal/agent/", "internal/tui/", "internal/session/", "internal/subagent/", "internal/runtime/", "internal/taskstore/"]
+    "4": ["internal/agent/", "internal/tui/", "internal/session/", "internal/subagent/", "internal/runtime/", "internal/taskstore/", "internal/apiserver/"]
   },
   "quality_rules": {
     "max_file_size": 500,

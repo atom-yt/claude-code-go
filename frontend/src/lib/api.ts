@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AuthResponse, ApiError, Agent, Session, Message, Skill, Artifact, Knowledge, ScheduledTask } from '@/types';
+import { AuthResponse, ApiError, Agent, Session, Message, Skill, Artifact, Knowledge, ScheduledTask, User } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -116,14 +116,14 @@ export const authApi = {
   },
 
   register: async (email: string, password: string, name: string): Promise<AuthResponse> => {
-    return api.post('/api/v1/auth/register', { email, password, name });
+    return api.post('/api/v1/auth/register', { email, password, display_name: name });
   },
 
   logout: async (): Promise<void> => {
     return api.post('/api/v1/auth/logout');
   },
 
-  me: async (): Promise<AuthResponse> => {
+  me: async (): Promise<{ user: User }> => {
     return api.get('/api/v1/auth/me');
   },
 };
@@ -155,7 +155,7 @@ export const agentsApi = {
 // Sessions API
 export const sessionsApi = {
   list: async (agentId?: string): Promise<Session[]> => {
-    const params = agentId ? { agentId } : {};
+    const params = agentId ? { agent_id: agentId } : {};
     const response = await api.get<ListResponse<Session>>('/api/v1/sessions', { params });
     return response.items;
   },
@@ -164,8 +164,12 @@ export const sessionsApi = {
     return api.get(`/api/v1/sessions/${id}`);
   },
 
-  create: async (data: any): Promise<Session> => {
-    return api.post('/api/v1/sessions', data);
+  create: async (data: { title?: string; agentId?: string }): Promise<Session> => {
+    // Convert to snake_case for backend
+    const payload: { title?: string; agent_id?: string } = {};
+    if (data.title) payload.title = data.title;
+    if (data.agentId) payload.agent_id = data.agentId;
+    return api.post('/api/v1/sessions', payload);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -254,10 +258,21 @@ export const chatApi = {
             if (!data || data === '[DONE]') continue;
 
             try {
-              const event = JSON.parse(data) as ChatStreamEvent;
-              onEvent(event);
+              const event = JSON.parse(data) as any;
+              // Map backend event types to frontend types
+              let mappedEvent: ChatStreamEvent;
+              if (event.type === 'delta') {
+                mappedEvent = { type: 'content', content: event.text || '' };
+              } else if (event.type === 'error') {
+                mappedEvent = { type: 'error', error: event.error || 'Unknown error' };
+              } else if (event.type === 'done') {
+                mappedEvent = { type: 'done' };
+              } else {
+                mappedEvent = event as ChatStreamEvent;
+              }
+              onEvent(mappedEvent);
 
-              if (event.type === 'done') {
+              if (mappedEvent.type === 'done') {
                 return;
               }
             } catch (e) {

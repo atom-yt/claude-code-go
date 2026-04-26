@@ -15,14 +15,14 @@ var (
 
 // SessionService handles session business logic
 type SessionService struct {
-	sessionRepo *repository.SessionRepository
-	agentRepo   *repository.AgentRepository
+	sessionRepo repository.SessionRepositoryI
+	agentRepo   repository.AgentRepositoryI
 }
 
 // NewSessionService creates a new session service
 func NewSessionService(
-	sessionRepo *repository.SessionRepository,
-	agentRepo *repository.AgentRepository,
+	sessionRepo repository.SessionRepositoryI,
+	agentRepo repository.AgentRepositoryI,
 ) *SessionService {
 	return &SessionService{
 		sessionRepo: sessionRepo,

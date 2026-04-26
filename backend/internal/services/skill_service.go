@@ -12,11 +12,11 @@ var ErrSkillNotFound = errors.New("skill not found")
 
 // SkillService handles skill business logic
 type SkillService struct {
-	repo *repository.SkillRepository
+	repo repository.SkillRepositoryI
 }
 
 // NewSkillService creates a new skill service
-func NewSkillService(repo *repository.SkillRepository) *SkillService {
+func NewSkillService(repo repository.SkillRepositoryI) *SkillService {
 	return &SkillService{repo: repo}
 }
 

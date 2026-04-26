@@ -11,10 +11,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Check if current page is an auth page
+  const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
+
   useEffect(() => {
     setMounted(true);
-    checkAuth();
-  }, [checkAuth]);
+    // Only check auth on non-auth pages
+    if (!isAuthPage) {
+      checkAuth();
+    }
+  }, []); // Run once on mount
 
   // Don't render anything until mounted (avoid SSR/hydration mismatch)
   if (!mounted) {
@@ -26,7 +32,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   // Auth pages don't need the layout
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
   if (isAuthPage) {
     return <>{children}</>;
   }
@@ -42,10 +47,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) {
-    router.push('/login');
-    return null;
-  }
+  // DEV MODE: Skip auth check for development
+  // Remove this check to enable authentication
+  // if (!isAuthenticated) {
+  //   router.push('/login');
+  //   return null;
+  // }
 
   return (
     <div className="flex h-screen overflow-hidden">

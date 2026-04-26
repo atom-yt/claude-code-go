@@ -10,11 +10,11 @@ import (
 
 // ScheduleHandler handles scheduled task HTTP requests
 type ScheduleHandler struct {
-	scheduleService *services.ScheduleService
+	scheduleService services.ScheduleServiceInterface
 }
 
 // NewScheduleHandler creates a new schedule handler
-func NewScheduleHandler(scheduleService *services.ScheduleService) *ScheduleHandler {
+func NewScheduleHandler(scheduleService services.ScheduleServiceInterface) *ScheduleHandler {
 	return &ScheduleHandler{
 		scheduleService: scheduleService,
 	}
