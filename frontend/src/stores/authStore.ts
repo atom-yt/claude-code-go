@@ -40,13 +40,14 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         try {
           const response = await authApi.login(email, password);
+          const tokenStr = response.token?.accessToken || (response.token as any);
           set({
             user: response.user,
-            token: response.token,
+            token: typeof tokenStr === 'string' ? tokenStr : JSON.stringify(tokenStr),
             isAuthenticated: true,
             isLoading: false,
           });
-          localStorage.setItem('token', response.token);
+          localStorage.setItem('token', typeof tokenStr === 'string' ? tokenStr : JSON.stringify(tokenStr));
         } catch (error: any) {
           set({ isLoading: false });
           throw error;
@@ -57,13 +58,14 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         try {
           const response = await authApi.register(email, password, name);
+          const tokenStr = response.token?.accessToken || (response.token as any);
           set({
             user: response.user,
-            token: response.token,
+            token: typeof tokenStr === 'string' ? tokenStr : JSON.stringify(tokenStr),
             isAuthenticated: true,
             isLoading: false,
           });
-          localStorage.setItem('token', response.token);
+          localStorage.setItem('token', typeof tokenStr === 'string' ? tokenStr : JSON.stringify(tokenStr));
         } catch (error: any) {
           set({ isLoading: false });
           throw error;
@@ -95,9 +97,10 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         try {
           const response = await authApi.me();
+          const tokenStr = response.token?.accessToken || (response.token as any);
           set({
             user: response.user,
-            token: response.token,
+            token: typeof tokenStr === 'string' ? tokenStr : JSON.stringify(tokenStr),
             isAuthenticated: true,
             isLoading: false,
           });

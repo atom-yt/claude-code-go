@@ -137,3 +137,60 @@ export interface ChatState {
   currentContent: string;
   toolCalls: ToolCall[];
 }
+
+// Knowledge types
+export interface Knowledge {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  type: string;
+  source: 'user' | 'ark';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Skill types
+export interface Skill {
+  id: string;
+  userId?: string;
+  teamId?: string;
+  name: string;
+  description: string;
+  category: 'personal' | 'team' | 'builtin';
+  icon: string;
+  enabled: boolean;
+  config?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Artifact types
+export interface Artifact {
+  id: string;
+  userId: string;
+  sessionId?: string;
+  title: string;
+  content: string;
+  fileType: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Scheduled Task types
+export interface ScheduledTask {
+  id: string;
+  userId: string;
+  title: string;
+  prompt: string;
+  scheduleType: 'daily' | 'weekly' | 'cron';
+  scheduleTime: string;
+  model: string;
+  enabled: boolean;
+  notifyOnDone: boolean;
+  executionCount: number;
+  lastRunAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}

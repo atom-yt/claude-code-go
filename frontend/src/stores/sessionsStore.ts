@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import { Session, Message, SessionsState } from '@/types';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi, messagesApi } from '@/lib/api';
 
 interface SessionsStore extends SessionsState {
   fetchSessions: () => Promise<void>;
   fetchMessages: (sessionId: string) => Promise<void>;
   selectSession: (session: Session | null) => void;
-  createSession: (data: { title?: string; model?: string; provider?: string }) => Promise<Session>;
+  createSession: (data: { title?: string; agentId?: string }) => Promise<Session>;
   deleteSession: (id: string) => Promise<void>;
-  sendMessage: (content: string, onMessage?: (message: Message) => void) => Promise<void>;
   addMessage: (message: Message) => void;
+  clearMessages: () => void;
 }
 
 export const useSessionsStore = create<SessionsStore>((set, get) => ({
@@ -32,11 +32,8 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
   fetchMessages: async (sessionId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const data = await sessionsApi.get(sessionId);
-      set({
-        messages: data.messages || [],
-        isLoading: false,
-      });
+      const messages = await messagesApi.getRecent(sessionId);
+      set({ messages: messages || [], isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -79,56 +76,13 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
     }
   },
 
-  sendMessage: async (content, onMessage) => {
-    const { selectedSession } = get();
-    if (!selectedSession) {
-      throw new Error('No session selected');
-    }
-
-    set({ isLoading: true, error: null });
-
-    // Add user message
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      sessionId: selectedSession.id,
-      role: 'user',
-      content,
-      createdAt: new Date().toISOString(),
-    };
-
-    set((state) => ({
-      messages: [...state.messages, userMessage],
-    }));
-
-    if (onMessage) onMessage(userMessage);
-
-    try {
-      // For streaming, we'll use WebSocket
-      // For now, use REST API
-      const response = await sessionsApi.create(selectedSession.id + '/messages', { content, stream: true });
-      const assistantMessage: Message = {
-        id: response.id || `msg-${Date.now() + 1}`,
-        sessionId: selectedSession.id,
-        role: response.role || 'assistant',
-        content: response.content || '',
-        toolCalls: response.toolCalls,
-        createdAt: response.createdAt || new Date().toISOString(),
-      };
-
-      set((state) => ({
-        messages: [...state.messages, assistantMessage],
-        isLoading: false,
-      }));
-
-      if (onMessage) onMessage(assistantMessage);
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
   addMessage: (message) => {
     set((state) => ({
       messages: [...state.messages, message],
     }));
+  },
+
+  clearMessages: () => {
+    set({ messages: [] });
   },
 }));

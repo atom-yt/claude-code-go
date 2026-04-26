@@ -159,6 +159,99 @@ type UpdateKnowledgeBaseRequest struct {
 	Description *string `json:"description" binding:"omitempty,max=500"`
 }
 
+// Skill represents a skill/tool that atom can use
+type Skill struct {
+	ID          string                 `json:"id" db:"id"`
+	UserID      *string                `json:"user_id" db:"user_id"`
+	TeamID      *string                `json:"team_id" db:"team_id"`
+	Name        string                 `json:"name" db:"name"`
+	Description string                 `json:"description" db:"description"`
+	Category    string                 `json:"category" db:"category"`
+	Icon        string                 `json:"icon" db:"icon"`
+	Enabled     bool                   `json:"enabled" db:"enabled"`
+	Config      map[string]interface{} `json:"config" db:"config"`
+	CreatedAt   time.Time              `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at" db:"updated_at"`
+}
+
+// CreateSkillRequest is the request to create a skill
+type CreateSkillRequest struct {
+	Name        string                 `json:"name" binding:"required,min=1,max=255"`
+	Description string                 `json:"description" binding:"omitempty,max=1000"`
+	Category    string                 `json:"category" binding:"omitempty,oneof=personal team builtin"`
+	Icon        string                 `json:"icon" binding:"omitempty,max=50"`
+	Config      map[string]interface{} `json:"config" binding:"omitempty"`
+}
+
+// UpdateSkillRequest is the request to update a skill
+type UpdateSkillRequest struct {
+	Name        *string                 `json:"name" binding:"omitempty,min=1,max=255"`
+	Description *string                 `json:"description" binding:"omitempty,max=1000"`
+	Icon        *string                 `json:"icon" binding:"omitempty,max=50"`
+	Enabled     *bool                   `json:"enabled" binding:"omitempty"`
+	Config      map[string]interface{}  `json:"config" binding:"omitempty"`
+}
+
+// Artifact represents a generated artifact/deliverable
+type Artifact struct {
+	ID        string    `json:"id" db:"id"`
+	UserID    string    `json:"user_id" db:"user_id"`
+	SessionID *string   `json:"session_id" db:"session_id"`
+	Title     string    `json:"title" db:"title"`
+	Content   string    `json:"content" db:"content"`
+	FileType  string    `json:"file_type" db:"file_type"`
+	Tags      []string  `json:"tags" db:"tags"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// CreateArtifactRequest is the request to create an artifact
+type CreateArtifactRequest struct {
+	Title     string   `json:"title" binding:"required,min=1,max=500"`
+	Content   string   `json:"content" binding:"required"`
+	SessionID string   `json:"session_id" binding:"omitempty"`
+	FileType  string   `json:"file_type" binding:"omitempty,max=20"`
+	Tags      []string `json:"tags" binding:"omitempty"`
+}
+
+// ScheduledTask represents a scheduled AI task
+type ScheduledTask struct {
+	ID             string     `json:"id" db:"id"`
+	UserID         string     `json:"user_id" db:"user_id"`
+	Title          string     `json:"title" db:"title"`
+	Prompt         string     `json:"prompt" db:"prompt"`
+	ScheduleType   string     `json:"schedule_type" db:"schedule_type"`
+	ScheduleTime   string     `json:"schedule_time" db:"schedule_time"`
+	Model          string     `json:"model" db:"model"`
+	Enabled        bool       `json:"enabled" db:"enabled"`
+	NotifyOnDone   bool       `json:"notify_on_done" db:"notify_on_done"`
+	ExecutionCount int        `json:"execution_count" db:"execution_count"`
+	LastRunAt      *time.Time `json:"last_run_at" db:"last_run_at"`
+	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// CreateScheduledTaskRequest is the request to create a scheduled task
+type CreateScheduledTaskRequest struct {
+	Title        string `json:"title" binding:"required,min=1,max=255"`
+	Prompt       string `json:"prompt" binding:"required,max=5000"`
+	ScheduleType string `json:"schedule_type" binding:"omitempty,oneof=daily weekly cron"`
+	ScheduleTime string `json:"schedule_time" binding:"required,max=50"`
+	Model        string `json:"model" binding:"omitempty,max=100"`
+	NotifyOnDone *bool  `json:"notify_on_done" binding:"omitempty"`
+}
+
+// UpdateScheduledTaskRequest is the request to update a scheduled task
+type UpdateScheduledTaskRequest struct {
+	Title        *string `json:"title" binding:"omitempty,min=1,max=255"`
+	Prompt       *string `json:"prompt" binding:"omitempty,max=5000"`
+	ScheduleType *string `json:"schedule_type" binding:"omitempty,oneof=daily weekly cron"`
+	ScheduleTime *string `json:"schedule_time" binding:"omitempty,max=50"`
+	Model        *string `json:"model" binding:"omitempty,max=100"`
+	Enabled      *bool   `json:"enabled" binding:"omitempty"`
+	NotifyOnDone *bool   `json:"notify_on_done" binding:"omitempty"`
+}
+
 // ListResponse is a generic list response with pagination
 type ListResponse struct {
 	Items      interface{} `json:"items"`

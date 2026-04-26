@@ -12,23 +12,31 @@ import (
 
 // Router manages all HTTP routes
 type Router struct {
-	router         *mux.Router
-	authService    *auth.Service
-	authHandler    *auth.Handler
-	agentHandler   *AgentHandler
-	sessionHandler *SessionHandler
-	messageHandler *MessageHandler
-	chatHandler    *ChatHandler
-	healthHandler  *HealthHandler
+	router           *mux.Router
+	authService      *auth.Service
+	authHandler      *auth.Handler
+	agentHandler     *AgentHandler
+	sessionHandler   *SessionHandler
+	messageHandler   *MessageHandler
+	chatHandler      *ChatHandler
+	healthHandler    *HealthHandler
+	skillHandler     *SkillHandler
+	artifactHandler  *ArtifactHandler
+	scheduleHandler  *ScheduleHandler
+	knowledgeHandler *KnowledgeHandler
 }
 
 // Config holds router configuration
 type Config struct {
-	AuthService    *auth.Service
-	AgentService  *services.AgentService
-	SessionService *services.SessionService
-	MessageService *services.MessageService
-	AgentFactory   *agent.ConfigFactory
+	AuthService      *auth.Service
+	AgentService     *services.AgentService
+	SessionService   *services.SessionService
+	MessageService   *services.MessageService
+	SkillService     *services.SkillService
+	ArtifactService  *services.ArtifactService
+	ScheduleService  *services.ScheduleService
+	KnowledgeService *services.KnowledgeService
+	AgentFactory     *agent.ConfigFactory
 }
 
 // NewRouter creates a new router with all routes configured
@@ -36,14 +44,18 @@ func NewRouter(cfg *Config) *Router {
 	r := mux.NewRouter()
 
 	router := &Router{
-		router:         r,
-		authService:    cfg.AuthService,
-		authHandler:    auth.NewHandler(cfg.AuthService),
-		agentHandler:   NewAgentHandler(cfg.AgentService),
-		sessionHandler: NewSessionHandler(cfg.SessionService),
-		messageHandler: NewMessageHandler(cfg.MessageService),
-		chatHandler:    NewChatHandler(cfg.AgentFactory),
-		healthHandler:  NewHealthHandler(),
+		router:           r,
+		authService:      cfg.AuthService,
+		authHandler:      auth.NewHandler(cfg.AuthService),
+		agentHandler:     NewAgentHandler(cfg.AgentService),
+		sessionHandler:   NewSessionHandler(cfg.SessionService),
+		messageHandler:   NewMessageHandler(cfg.MessageService),
+		chatHandler:      NewChatHandler(cfg.AgentFactory),
+		healthHandler:    NewHealthHandler(),
+		skillHandler:     NewSkillHandler(cfg.SkillService),
+		artifactHandler:  NewArtifactHandler(cfg.ArtifactService),
+		scheduleHandler:  NewScheduleHandler(cfg.ScheduleService),
+		knowledgeHandler: NewKnowledgeHandler(cfg.KnowledgeService),
 	}
 
 	router.setupRoutes()
@@ -108,6 +120,36 @@ func (r *Router) setupRoutes() {
 	protected.HandleFunc("/chat", r.chatHandler.HandleChat).Methods("POST")
 	protected.HandleFunc("/chat/stream", r.chatHandler.HandleChat).Methods("POST")
 	r.router.HandleFunc("/ws/chat", r.chatHandler.HandleWebSocket)
+
+	// Skill routes
+	protected.HandleFunc("/skills", r.skillHandler.GetUserSkills).Methods("GET")
+	protected.HandleFunc("/skills", r.skillHandler.CreateSkill).Methods("POST")
+	protected.HandleFunc("/skills/{id}", r.skillHandler.GetSkill).Methods("GET")
+	protected.HandleFunc("/skills/{id}", r.skillHandler.UpdateSkill).Methods("PUT")
+	protected.HandleFunc("/skills/{id}", r.skillHandler.DeleteSkill).Methods("DELETE")
+	protected.HandleFunc("/skills/{id}/toggle", r.skillHandler.ToggleSkill).Methods("PUT")
+
+	// Artifact routes
+	protected.HandleFunc("/artifacts", r.artifactHandler.GetUserArtifacts).Methods("GET")
+	protected.HandleFunc("/artifacts", r.artifactHandler.CreateArtifact).Methods("POST")
+	protected.HandleFunc("/artifacts/stats", r.artifactHandler.GetArtifactStats).Methods("GET")
+	protected.HandleFunc("/artifacts/{id}", r.artifactHandler.GetArtifact).Methods("GET")
+	protected.HandleFunc("/artifacts/{id}", r.artifactHandler.DeleteArtifact).Methods("DELETE")
+
+	// Schedule routes
+	protected.HandleFunc("/schedules", r.scheduleHandler.GetUserSchedules).Methods("GET")
+	protected.HandleFunc("/schedules", r.scheduleHandler.CreateSchedule).Methods("POST")
+	protected.HandleFunc("/schedules/{id}", r.scheduleHandler.GetSchedule).Methods("GET")
+	protected.HandleFunc("/schedules/{id}", r.scheduleHandler.UpdateSchedule).Methods("PUT")
+	protected.HandleFunc("/schedules/{id}", r.scheduleHandler.DeleteSchedule).Methods("DELETE")
+	protected.HandleFunc("/schedules/{id}/toggle", r.scheduleHandler.ToggleSchedule).Methods("PUT")
+
+	// Knowledge routes
+	protected.HandleFunc("/knowledge", r.knowledgeHandler.GetUserKnowledge).Methods("GET")
+	protected.HandleFunc("/knowledge", r.knowledgeHandler.CreateKnowledge).Methods("POST")
+	protected.HandleFunc("/knowledge/{id}", r.knowledgeHandler.GetKnowledge).Methods("GET")
+	protected.HandleFunc("/knowledge/{id}", r.knowledgeHandler.UpdateKnowledge).Methods("PUT")
+	protected.HandleFunc("/knowledge/{id}", r.knowledgeHandler.DeleteKnowledge).Methods("DELETE")
 }
 
 // GetRouter returns the underlying mux router

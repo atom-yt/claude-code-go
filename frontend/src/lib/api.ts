@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AuthResponse, ApiError, Agent, Session, Message } from '@/types';
+import { AuthResponse, ApiError, Agent, Session, Message, Skill, Artifact, Knowledge, ScheduledTask } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -273,5 +273,112 @@ export const chatApi = {
 
   send: async (sessionId: string, message: string): Promise<Message> => {
     return api.post(`/api/v1/chat`, { session_id: sessionId, message, stream: false });
+  },
+};
+
+// Skills API
+export const skillsApi = {
+  list: async (category?: string): Promise<Skill[]> => {
+    const params: Record<string, string> = {};
+    if (category) params.category = category;
+    const response = await api.get<ListResponse<Skill>>('/api/v1/skills', { params });
+    return response.items;
+  },
+
+  get: async (id: string): Promise<Skill> => {
+    return api.get(`/api/v1/skills/${id}`);
+  },
+
+  create: async (data: any): Promise<Skill> => {
+    return api.post('/api/v1/skills', data);
+  },
+
+  update: async (id: string, data: any): Promise<Skill> => {
+    return api.put(`/api/v1/skills/${id}`, data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return api.delete(`/api/v1/skills/${id}`);
+  },
+
+  toggle: async (id: string, enabled: boolean): Promise<void> => {
+    return api.put(`/api/v1/skills/${id}/toggle`, { enabled });
+  },
+};
+
+// Artifacts API
+export const artifactsApi = {
+  list: async (search?: string, page = 1, pageSize = 20): Promise<{ items: Artifact[]; total: number }> => {
+    const params: Record<string, any> = { page, page_size: pageSize };
+    if (search) params.search = search;
+    return api.get('/api/v1/artifacts', { params });
+  },
+
+  get: async (id: string): Promise<Artifact> => {
+    return api.get(`/api/v1/artifacts/${id}`);
+  },
+
+  create: async (data: any): Promise<Artifact> => {
+    return api.post('/api/v1/artifacts', data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return api.delete(`/api/v1/artifacts/${id}`);
+  },
+
+  stats: async (): Promise<{ total: number }> => {
+    return api.get('/api/v1/artifacts/stats');
+  },
+};
+
+// Knowledge API
+export const knowledgeApi = {
+  list: async (): Promise<Knowledge[]> => {
+    const response = await api.get<ListResponse<Knowledge>>('/api/v1/knowledge');
+    return response.items;
+  },
+
+  get: async (id: string): Promise<Knowledge> => {
+    return api.get(`/api/v1/knowledge/${id}`);
+  },
+
+  create: async (data: any): Promise<Knowledge> => {
+    return api.post('/api/v1/knowledge', data);
+  },
+
+  update: async (id: string, data: any): Promise<Knowledge> => {
+    return api.put(`/api/v1/knowledge/${id}`, data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return api.delete(`/api/v1/knowledge/${id}`);
+  },
+};
+
+// Schedules API
+export const schedulesApi = {
+  list: async (): Promise<ScheduledTask[]> => {
+    const response = await api.get<ListResponse<ScheduledTask>>('/api/v1/schedules');
+    return response.items;
+  },
+
+  get: async (id: string): Promise<ScheduledTask> => {
+    return api.get(`/api/v1/schedules/${id}`);
+  },
+
+  create: async (data: any): Promise<ScheduledTask> => {
+    return api.post('/api/v1/schedules', data);
+  },
+
+  update: async (id: string, data: any): Promise<ScheduledTask> => {
+    return api.put(`/api/v1/schedules/${id}`, data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return api.delete(`/api/v1/schedules/${id}`);
+  },
+
+  toggle: async (id: string, enabled: boolean): Promise<void> => {
+    return api.put(`/api/v1/schedules/${id}/toggle`, { enabled });
   },
 };

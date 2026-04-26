@@ -1,3 +1,5 @@
+import { Message, ToolCall } from '@/types';
+
 // Streaming event types from backend
 export type StreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'error' | 'done';
 

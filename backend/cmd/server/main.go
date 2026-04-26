@@ -50,6 +50,10 @@ func main() {
 	sessionRepo := repository.NewSessionRepository(database.Pool())
 	messageRepo := repository.NewMessageRepository(database.Pool())
 	agentRepo := repository.NewAgentRepository(database.Pool())
+	skillRepo := repository.NewSkillRepository(database.Pool())
+	artifactRepo := repository.NewArtifactRepository(database.Pool())
+	scheduleRepo := repository.NewScheduleRepository(database.Pool())
+	knowledgeRepo := repository.NewKnowledgeRepository(database.Pool())
 
 	// Initialize services
 	authUserStore := auth.NewUserStoreAdapter(userRepo)
@@ -57,17 +61,25 @@ func main() {
 	agentService := services.NewAgentService(agentRepo)
 	sessionService := services.NewSessionService(sessionRepo, agentRepo)
 	messageService := services.NewMessageService(messageRepo, sessionRepo)
+	skillService := services.NewSkillService(skillRepo)
+	artifactService := services.NewArtifactService(artifactRepo)
+	scheduleService := services.NewScheduleService(scheduleRepo)
+	knowledgeService := services.NewKnowledgeService(knowledgeRepo)
 
 	// Initialize agent factory
 	agentFactory := agent.NewConfigFactory(apiKey, baseURL, defaultProvider, defaultModel)
 
 	// Initialize router
 	router := handlers.NewRouter(&handlers.Config{
-		AuthService:    authService,
-		AgentService:   agentService,
-		SessionService: sessionService,
-		MessageService: messageService,
-		AgentFactory:   agentFactory,
+		AuthService:      authService,
+		AgentService:     agentService,
+		SessionService:   sessionService,
+		MessageService:   messageService,
+		SkillService:     skillService,
+		ArtifactService:  artifactService,
+		ScheduleService:  scheduleService,
+		KnowledgeService: knowledgeService,
+		AgentFactory:     agentFactory,
 	})
 
 	// Create server

@@ -26,7 +26,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
 		INSERT INTO users (id, email, password_hash, display_name, role, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, email, display_name, role, created_at, updated_at
+		RETURNING id, email, password_hash, display_name, role, created_at, updated_at
 	`
 
 	now := timeNow()
@@ -47,6 +47,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	).Scan(
 		&user.ID,
 		&user.Email,
+		&user.PasswordHash,
 		&user.DisplayName,
 		&user.Role,
 		&user.CreatedAt,
